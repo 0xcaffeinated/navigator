@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { siteConfig } from '../../config';
+
+const books = await getCollection('books');
+const statusOrder = { writing: 0, planned: 1, published: 2 };
+const sorted = books.sort((a, b) => statusOrder[a.data.status] - statusOrder[b.data.status]);
+
+const statusMap: Record<string, { label: string; color: string }> = {
+  writing: { label: 'Charting', color: 'var(--color-accent)' },
+  planned: { label: 'Plotted', color: 'var(--color-warm)' },
+  published: { label: 'Mapped', color: '#4ade80' },
+};
+---
+
+<BaseLayout title={`Library — ${siteConfig.name.full}`}>
+
+  <section class="relative pt-20 pb-16 md:pt-32 md:pb-24 px-6 md:px-12">
+    <div class="absolute inset-0 topo-grid"></div>
+    <div class="max-w-4xl mx-auto relative">
+      <div class="mb-16 reveal">
+        <div class="flex items-center gap-4 mb-8">
+          <span class="flex items-center gap-2.5 section-label">
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-warm)]"></span>
+            Library
+          </span>
+          <div class="flex-1 h-0 border-t border-dashed border-[var(--color-edge)]"></div>
+          <span class="bearing-badge hidden md:block">04 / LIB</span>
+        </div>
+        <h1 class="font-[family-name:var(--font-display)] text-4xl md:text-5xl font-bold text-[var(--color-text)] mb-4">
+          The Atlas<span class="accent-warm">.</span>
+        </h1>
+        <p class="dim text-lg max-w-lg">
+          Books I'm charting. History, engineering, and the routes that connect them.
+        </p>
+      </div>
+
+      <!-- Voyage status legend -->
+      <div class="flex items-center gap-5 mb-8 reveal">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"></span>
+          <span class="text-[9px] font-mono faint tracking-wider">Charting</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-warm)]"></span>
+          <span class="text-[9px] font-mono faint tracking-wider">Plotted</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>
+          <span class="text-[9px] font-mono faint tracking-wider">Mapped</span>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4 stagger">
+        {sorted.map((book, i) => (
+          <div class="card card-coord tilt overflow-hidden">
+            <div class="relative h-44 bg-[var(--color-surface)] flex items-center justify-center border-b border-[var(--color-edge)]">
+              <div class="absolute left-0 top-0 bottom-0 w-0.5" style={`background: ${statusMap[book.data.status].color}`}></div>
+              <!-- Route number -->
+              <span class="absolute top-3 right-4 text-[9px] font-mono faint tracking-wider">RT.0{i + 1}</span>
+              <div class="text-center px-8">
+                <h3 class="font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-text)] leading-tight mb-1">{book.data.title}</h3>
+                <p class="font-mono text-[11px] faint tracking-wider uppercase">{book.data.genre}</p>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="w-1.5 h-1.5 rounded-full" style={`background: ${statusMap[book.data.status].color}`}></span>
+                <span class="text-xs font-mono font-medium" style={`color: ${statusMap[book.data.status].color}`}>{statusMap[book.data.status].label}</span>
+              </div>
+              <p class="dim text-sm leading-relaxed mb-4">{book.data.description}</p>
+              {book.data.progress > 0 && (
+                <div>
+                  <div class="flex justify-between font-mono text-[11px] faint mb-1.5">
+                    <span>Voyage</span>
+                    <span>{book.data.progress}%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-[var(--color-raised)] rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-700" style={`width:${book.data.progress}%; background: linear-gradient(90deg, var(--color-accent), var(--color-warm));`}></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+      </div>
+    </div>
+  </section>
+
+</BaseLayout>

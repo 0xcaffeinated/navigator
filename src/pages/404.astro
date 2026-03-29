@@ -1,0 +1,167 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../config';
+---
+
+<BaseLayout title={`Signal Lost — ${siteConfig.name.full}`} noindex={true}>
+
+  <!-- Standard 404 (shown when URL doesn't match /blog/dev/) -->
+  <section id="not-found" class="relative min-h-[70vh] flex items-center justify-center px-6 md:px-12">
+    <div class="absolute inset-0 topo-grid"></div>
+    <div class="text-center relative reveal">
+      <div class="flex items-center justify-center gap-2 mb-6">
+        <div class="w-1.5 h-1.5 rounded-full bg-[var(--color-warm)]"></div>
+        <span class="text-[9px] font-mono faint tracking-[0.15em] uppercase">Signal Lost</span>
+      </div>
+      <h1 class="font-[family-name:var(--font-display)] text-6xl md:text-8xl font-bold text-[var(--color-text)] mb-4">404</h1>
+      <p class="dim text-lg mb-8 max-w-md mx-auto">This coordinate doesn't exist on the map. The route may have changed.</p>
+      <a href="/" class="btn-primary magnetic">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+        <span>Return to base</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Live article reader (shown when URL matches /blog/dev/) -->
+  <article id="live-reader" class="relative pt-32 pb-24 px-6 md:px-12" style="display:none">
+    <div class="absolute inset-0 topo-grid"></div>
+    <div class="max-w-3xl mx-auto relative">
+      <a href="/blog" class="inline-flex items-center gap-2 dim hover:text-[var(--color-accent)] hover:-translate-x-1 transition-all duration-200 mb-14 text-sm group font-mono">
+        <svg class="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Return to logbook
+      </a>
+
+      <!-- Loading -->
+      <div id="live-loading" class="flex items-center justify-center py-32">
+        <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+        <span class="text-[9px] font-mono faint tracking-wider ml-2">Receiving transmission...</span>
+      </div>
+
+      <!-- Error -->
+      <div id="live-error" style="display:none" class="text-center py-32">
+        <div class="flex items-center justify-center gap-2 mb-6">
+          <div class="w-1.5 h-1.5 rounded-full bg-[var(--color-warm)]"></div>
+          <span class="text-[9px] font-mono faint tracking-[0.15em] uppercase">Transmission Failed</span>
+        </div>
+        <p class="dim text-lg mb-8">Could not receive this signal. The source may be unavailable.</p>
+        <a href="/blog" class="btn-primary magnetic">
+          <span>Return to logbook</span>
+        </a>
+      </div>
+
+      <!-- Article content (filled by JS) -->
+      <div id="live-content" style="display:none">
+        <header class="mb-14">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-1 h-1 rounded-full bg-[var(--color-tertiary)]"></div>
+            <span class="text-[9px] font-mono faint tracking-[0.15em] uppercase">Log Entry</span>
+            <span class="text-[9px] font-mono faint">&middot;</span>
+            <span class="text-[9px] font-mono faint tracking-wider" id="live-readtime"></span>
+            <span class="text-[9px] font-mono faint">&middot;</span>
+            <span class="text-[9px] font-mono text-[var(--color-tertiary)] tracking-wider">EXT</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <span class="tag-warm" id="live-date"></span>
+            <a id="live-devto-link" href="#" target="_blank" rel="noopener noreferrer" class="tag flex items-center gap-1.5 hover:text-[var(--color-accent)] transition-colors no-underline">
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.3zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg>
+              dev.to
+            </a>
+          </div>
+          <h1 class="font-[family-name:var(--font-display)] text-3xl md:text-5xl font-bold text-[var(--color-text)] leading-[1.2] mb-4" id="live-title"></h1>
+          <p class="text-lg dim leading-relaxed" id="live-description"></p>
+          <div class="flex flex-wrap gap-1.5 mt-5" id="live-tags"></div>
+        </header>
+
+        <div class="separator mb-12"></div>
+
+        <div class="prose" id="live-body"></div>
+
+        <!-- Refuel -->
+        <div class="mt-16 mb-16 flex justify-center">
+          <a href={siteConfig.social.buymeacoffee.url} target="_blank" rel="noopener noreferrer" class="group flex items-center gap-2.5 px-5 py-3 rounded-xl border border-dashed border-[var(--color-edge)] hover:border-[var(--color-warm)]/40 transition-all duration-300">
+            <svg class="w-4 h-4 text-[var(--color-warm)] opacity-60 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 8h1a4 4 0 110 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8zM6 2v4M10 2v4M14 2v4"/></svg>
+            <span class="text-[11px] font-mono faint group-hover:text-[var(--color-warm)] transition-colors tracking-wider">Refuel the navigator</span>
+          </a>
+        </div>
+
+        <div class="pt-8 border-t border-dashed border-[var(--color-edge)] flex flex-wrap items-center justify-between gap-3">
+          <a href="/blog" class="btn-ghost magnetic">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <span>All entries</span>
+          </a>
+          <a id="live-devto-link-bottom" href="#" target="_blank" rel="noopener noreferrer" class="btn-ghost magnetic text-sm">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.3zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg>
+            <span>View on dev.to</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <script is:inline define:vars={{ devtoUsername: siteConfig.social.devto.username, siteName: siteConfig.name.full }}>
+    window.__siteConfig = { devtoUsername, siteName };
+  </script>
+  <script>
+    const path = window.location.pathname;
+    const match = path.match(/^\/blog\/dev\/(.+?)\/?$/);
+
+    if (match) {
+      // This is a dev.to article URL — switch to live reader mode
+      document.getElementById('not-found')!.style.display = 'none';
+      document.getElementById('live-reader')!.style.display = '';
+
+      const slug = match[1];
+
+      function cleanTitle(title: string) {
+        return title.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+\s*/u, '');
+      }
+
+      (async () => {
+        try {
+          // Search for the article by fetching the user's articles and matching slug
+          const cfg = (window as any).__siteConfig;
+          const listRes = await fetch(`https://dev.to/api/articles?username=${cfg.devtoUsername}&per_page=100`);
+          const articles = await listRes.json();
+          const found = articles.find((a: any) => a.slug === slug);
+
+          if (!found) throw new Error('Article not found');
+
+          // Fetch full article
+          const fullRes = await fetch(`https://dev.to/api/articles/${found.id}`);
+          if (!fullRes.ok) throw new Error('Fetch failed');
+          const article = await fullRes.json();
+
+          // Populate the page
+          document.title = `${cleanTitle(article.title)} — ${cfg.siteName}`;
+
+          document.getElementById('live-title')!.textContent = cleanTitle(article.title);
+          document.getElementById('live-description')!.textContent = article.description;
+          document.getElementById('live-readtime')!.textContent = `${article.reading_time_minutes} min transmission`;
+          document.getElementById('live-date')!.textContent = new Date(article.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          document.getElementById('live-body')!.innerHTML = article.body_html;
+
+          (document.getElementById('live-devto-link') as HTMLAnchorElement).href = article.url;
+          (document.getElementById('live-devto-link-bottom') as HTMLAnchorElement).href = article.url;
+
+          // Tags
+          const tagsEl = document.getElementById('live-tags')!;
+          (article.tags as string[]).forEach(t => {
+            const span = document.createElement('span');
+            span.className = 'tag';
+            span.textContent = t;
+            tagsEl.appendChild(span);
+          });
+
+          // Show content, hide loading
+          document.getElementById('live-loading')!.style.display = 'none';
+          document.getElementById('live-content')!.style.display = '';
+
+        } catch {
+          document.getElementById('live-loading')!.style.display = 'none';
+          document.getElementById('live-error')!.style.display = '';
+        }
+      })();
+    }
+  </script>
+
+</BaseLayout>

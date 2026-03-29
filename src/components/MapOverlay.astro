@@ -1,0 +1,236 @@
+---
+import { siteConfig, coordsShort } from '../config';
+const cities = siteConfig.places;
+---
+
+<!-- ═══ MAP CHART OVERLAY ═══ -->
+<div id="map-overlay" class="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-8 opacity-0 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+  <div id="map-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+  <div id="map-panel" class="relative w-full md:max-w-4xl h-[calc(100vh-100px)] md:h-[75vh] flex flex-col translate-y-4 scale-[0.98] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+
+    <!-- Title bar -->
+    <div class="flex items-center justify-between px-4 py-2.5 rounded-t-xl border border-b-0 border-[var(--color-edge)] bg-[var(--color-surface)] shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="flex gap-1.5">
+          <button id="map-close" class="w-2.5 h-2.5 rounded-full bg-[var(--color-warm)] hover:brightness-125 transition-all cursor-pointer" title="Close"></button>
+          <div class="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)]/40"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-[var(--color-tertiary)]/40"></div>
+        </div>
+        <span class="text-[9px] font-mono faint tracking-[0.15em] uppercase ml-2">Chart Plotter v1.0</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-1 h-1 rounded-full bg-[var(--color-tertiary)] animate-pulse"></span>
+        <span class="text-[8px] font-mono faint tracking-wider">PLOTTING</span>
+      </div>
+    </div>
+
+    <!-- Map + Status -->
+    <div class="relative flex-1 min-h-0 rounded-b-none md:rounded-b-xl border border-[var(--color-edge)] bg-[var(--color-bg)] overflow-hidden flex flex-col">
+      <div id="chart-map" class="flex-1 min-h-0 z-0"></div>
+      <div class="px-5 py-3 border-t border-[var(--color-edge)]/30 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-1 h-1 rounded-full bg-[var(--color-accent)]"></span>
+          <span class="text-[9px] font-mono faint tracking-wider">{cities.length} WAYPOINTS CHARTED</span>
+        </div>
+        <span class="text-[9px] font-mono faint tracking-wider">BASE: {coordsShort}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /* Override Leaflet chrome to match navigator theme */
+  #chart-map .leaflet-control-zoom a {
+    background: var(--color-surface) !important;
+    color: var(--color-dim) !important;
+    border-color: var(--color-edge) !important;
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 14px !important;
+  }
+  #chart-map .leaflet-control-zoom a:hover {
+    color: var(--color-accent) !important;
+    background: var(--color-raised) !important;
+  }
+  #chart-map .leaflet-control-zoom {
+    border: none !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  }
+  .chart-tooltip {
+    background: var(--color-surface) !important;
+    border: 1px solid var(--color-edge) !important;
+    color: var(--color-text) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    padding: 6px 10px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+    line-height: 1.5 !important;
+  }
+  .chart-tooltip::before {
+    border-top-color: var(--color-edge) !important;
+  }
+  .leaflet-tooltip-left.chart-tooltip::before {
+    border-left-color: var(--color-edge) !important;
+    border-top-color: transparent !important;
+  }
+  .leaflet-tooltip-right.chart-tooltip::before {
+    border-right-color: var(--color-edge) !important;
+    border-top-color: transparent !important;
+  }
+  /* Hide Leaflet attribution */
+  #chart-map .leaflet-control-attribution { display: none; }
+
+  /* Home marker pulse */
+  @keyframes chart-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.15; transform: scale(1.8); }
+  }
+  .home-pulse {
+    animation: chart-pulse 2.5s ease-in-out infinite;
+  }
+</style>
+
+<script is:inline define:vars={{ cities }}>
+  window.__chartCities = cities;
+</script>
+
+<script>
+  const overlay = document.getElementById('map-overlay')!;
+  const backdrop = document.getElementById('map-backdrop')!;
+  const panel = document.getElementById('map-panel')!;
+  const closeBtn = document.getElementById('map-close')!;
+  const cities = (window as any).__chartCities as { name: string; lat: number; lon: number; home: boolean }[];
+
+  let isOpen = false;
+  let mapReady = false;
+  let mapInstance: any = null;
+
+  // ── Lazy-load Leaflet from CDN ──
+  function loadLeaflet(): Promise<any> {
+    return new Promise((resolve) => {
+      if ((window as any).L) { resolve((window as any).L); return; }
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.onload = () => resolve((window as any).L);
+      document.head.appendChild(js);
+    });
+  }
+
+  // ── Init map (once) ──
+  async function initMap() {
+    const L = await loadLeaflet();
+    await new Promise(r => setTimeout(r, 150));
+
+    mapInstance = L.map('chart-map', {
+      zoomControl: true,
+      scrollWheelZoom: false,
+      attributionControl: false,
+    });
+
+    // Dark tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 18,
+      subdomains: 'abcd',
+    }).addTo(mapInstance);
+
+    const home = cities.find((c: any) => c.home)!;
+
+    // Route lines from home
+    cities.forEach((city: any) => {
+      if (city.home) return;
+      L.polyline([[home.lat, home.lon], [city.lat, city.lon]], {
+        color: '#8b5cf6',
+        weight: 1,
+        opacity: 0.2,
+        dashArray: '6 4',
+      }).addTo(mapInstance);
+    });
+
+    // City markers
+    cities.forEach((city: any) => {
+      if (city.home) return;
+      L.circleMarker([city.lat, city.lon], {
+        radius: 5,
+        fillColor: '#f97316',
+        color: '#f97316',
+        weight: 1.5,
+        opacity: 0.9,
+        fillOpacity: 0.35,
+      })
+        .bindTooltip(
+          `<strong>${city.name}</strong><br><span style="opacity:0.6">${city.lat}\u00b0N ${city.lon}\u00b0E</span>`,
+          { className: 'chart-tooltip', direction: 'top', offset: [0, -6] }
+        )
+        .addTo(mapInstance);
+    });
+
+    // Home marker — pulse ring + solid center
+    const pulseIcon = L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:28px;height:28px">
+        <div class="home-pulse" style="position:absolute;inset:0;border-radius:50%;background:#8b5cf6"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#8b5cf6;box-shadow:0 0 10px rgba(139,92,246,0.6)"></div>
+      </div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+
+    L.marker([home.lat, home.lon], { icon: pulseIcon })
+      .bindTooltip(
+        `<strong style="color:#8b5cf6">${home.name}</strong><br><span style="opacity:0.6">HOME BASE \u00b7 ${home.lat}\u00b0N ${home.lon}\u00b0E</span>`,
+        { className: 'chart-tooltip', direction: 'top', offset: [0, -14] }
+      )
+      .addTo(mapInstance);
+
+    // Fit to all cities
+    const bounds = L.latLngBounds(cities.map((c: any) => [c.lat, c.lon]));
+    mapInstance.fitBounds(bounds, { padding: [50, 50] });
+    mapReady = true;
+  }
+
+  // ── Open / Close ──
+
+  function openMap() {
+    isOpen = true;
+    overlay.classList.remove('opacity-0', 'pointer-events-none');
+    overlay.classList.add('opacity-100', 'pointer-events-auto');
+    panel.classList.remove('translate-y-4', 'scale-[0.98]');
+    panel.classList.add('translate-y-0', 'scale-100');
+    document.body.style.overflow = 'hidden';
+
+    if (!mapReady) {
+      initMap();
+    } else if (mapInstance) {
+      setTimeout(() => mapInstance.invalidateSize(), 150);
+    }
+  }
+
+  function closeMap() {
+    isOpen = false;
+    overlay.classList.add('opacity-0', 'pointer-events-none');
+    overlay.classList.remove('opacity-100', 'pointer-events-auto');
+    panel.classList.add('translate-y-4', 'scale-[0.98]');
+    panel.classList.remove('translate-y-0', 'scale-100');
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.map-toggle').forEach(btn => {
+    btn.addEventListener('click', () => { if (isOpen) closeMap(); else openMap(); });
+  });
+
+  closeBtn.addEventListener('click', closeMap);
+  backdrop.addEventListener('click', closeMap);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) closeMap();
+  });
+</script>

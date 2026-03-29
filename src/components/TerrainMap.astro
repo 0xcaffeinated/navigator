@@ -1,0 +1,265 @@
+---
+interface Props {
+  username: string;
+}
+const { username } = Astro.props;
+---
+
+<div class="card card-coord p-5 md:p-7" id="terrain-map" data-username={username}>
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-2.5">
+      <span class="text-[9px] font-mono faint tracking-wider">TERRAIN</span>
+      <span class="w-3 border-t border-dashed border-[var(--color-faint)]/30"></span>
+      <svg class="w-3.5 h-3.5 faint" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      <span class="text-[13px] font-[family-name:var(--font-display)] font-semibold text-[var(--color-text)]">Signal Activity</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-[10px] font-mono text-[var(--color-accent)]" id="terrain-total"></span>
+      <span class="bearing-badge">365d</span>
+    </div>
+  </div>
+
+  <!-- Scrollable terrain -->
+  <div class="relative">
+    <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[var(--color-surface)] to-transparent z-10 pointer-events-none md:hidden" id="terrain-fade"></div>
+    <div class="overflow-x-auto" id="terrain-scroll">
+      <!-- Grid -->
+      <div class="inline-flex gap-[2px] min-w-max" id="terrain-grid"></div>
+      <!-- Month ticks -->
+      <div class="relative h-3 mt-1" id="terrain-months"></div>
+    </div>
+  </div>
+
+  <!-- Legend + link -->
+  <div class="flex items-center justify-between mt-4 pt-3 border-t border-dashed border-[var(--color-edge)]">
+    <div class="flex items-center gap-2">
+      <span class="text-[7px] font-mono faint tracking-[0.15em] uppercase">Deep</span>
+      <div class="flex gap-[2px]" id="terrain-legend"></div>
+      <span class="text-[7px] font-mono faint tracking-[0.15em] uppercase">Peak</span>
+    </div>
+    <a href={`https://github.com/${username}`} target="_blank" rel="noopener noreferrer" class="text-[8px] font-mono faint hover:text-[var(--color-accent)] transition-colors tracking-wider">
+      @{username} ↗
+    </a>
+  </div>
+
+  <!-- Loading state -->
+  <div class="absolute inset-0 flex items-center justify-center rounded-2xl bg-[var(--color-surface)]" id="terrain-loading">
+    <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+    <span class="text-[9px] font-mono faint tracking-wider ml-2">Mapping terrain...</span>
+  </div>
+</div>
+
+<style is:global>
+  .terrain-cell {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: crosshair;
+  }
+  .terrain-cell:hover {
+    transform: scale(1.6);
+    z-index: 10;
+    position: relative;
+  }
+  .terrain-cell[data-level="3"]:hover {
+    box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
+  }
+  .terrain-cell[data-level="4"]:hover {
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
+  }
+
+  #terrain-map {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .terrain-cell {
+      width: 9px;
+      height: 9px;
+    }
+  }
+
+  [data-theme="light"] #terrain-fade {
+    background: linear-gradient(to left, #ffffff, transparent) !important;
+  }
+
+  [data-theme="light"] #terrain-loading {
+    background: #ffffff !important;
+  }
+</style>
+
+<script>
+  const DARK = [
+    'rgba(30, 41, 59, 0.3)',
+    'rgba(139, 92, 246, 0.2)',
+    'rgba(139, 92, 246, 0.45)',
+    'rgba(139, 92, 246, 0.7)',
+    'rgba(249, 115, 22, 0.85)',
+  ];
+
+  const LIGHT = [
+    'rgba(226, 232, 240, 0.6)',
+    'rgba(124, 58, 237, 0.15)',
+    'rgba(124, 58, 237, 0.3)',
+    'rgba(124, 58, 237, 0.55)',
+    'rgba(234, 88, 12, 0.75)',
+  ];
+
+  function colors() {
+    return document.documentElement.dataset.theme === 'light' ? LIGHT : DARK;
+  }
+
+  interface Day {
+    date: string;
+    count: number;
+    level: number;
+  }
+
+  function buildGrid(contributions: Day[]) {
+    const grid = document.getElementById('terrain-grid')!;
+    const monthsEl = document.getElementById('terrain-months')!;
+    const c = colors();
+
+    grid.innerHTML = '';
+    monthsEl.innerHTML = '';
+
+    // Group into weeks, aligned to day-of-week
+    const firstDay = new Date(contributions[0].date).getDay();
+    const weeks: (Day | null)[][] = [];
+
+    // First partial week
+    const first: (Day | null)[] = [];
+    for (let i = 0; i < firstDay; i++) first.push(null);
+    let idx = 0;
+    while (first.length < 7 && idx < contributions.length) {
+      first.push(contributions[idx++]);
+    }
+    weeks.push(first);
+
+    while (idx < contributions.length) {
+      const week: Day[] = [];
+      for (let d = 0; d < 7 && idx < contributions.length; d++) {
+        week.push(contributions[idx++]);
+      }
+      weeks.push(week);
+    }
+
+    // Render columns
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let lastMonth = -1;
+    const cellStep = window.innerWidth < 768 ? 11 : 13; // cell + gap
+
+    weeks.forEach((week, wi) => {
+      const col = document.createElement('div');
+      col.style.display = 'flex';
+      col.style.flexDirection = 'column';
+      col.style.gap = '2px';
+
+      week.forEach((day) => {
+        const cell = document.createElement('div');
+        cell.className = 'terrain-cell';
+
+        if (!day) {
+          cell.style.background = 'transparent';
+          cell.style.cursor = 'default';
+        } else {
+          const lvl = Math.min(day.level, 4);
+          cell.style.background = c[lvl];
+          cell.dataset.level = String(lvl);
+
+          if (lvl === 4) {
+            cell.style.boxShadow = '0 0 4px rgba(249, 115, 22, 0.3)';
+          } else if (lvl === 3) {
+            cell.style.boxShadow = '0 0 3px rgba(139, 92, 246, 0.15)';
+          }
+
+          cell.title = `${day.date} · ${day.count} signal${day.count !== 1 ? 's' : ''}`;
+        }
+
+        col.appendChild(cell);
+      });
+
+      grid.appendChild(col);
+
+      // Month labels
+      const validDay = week.find((d): d is Day => d !== null && d.date !== '');
+      if (validDay) {
+        const month = new Date(validDay.date).getMonth();
+        if (month !== lastMonth) {
+          const tick = document.createElement('span');
+          tick.className = 'absolute text-[7px] font-mono faint tracking-wider';
+          tick.style.left = (wi * cellStep) + 'px';
+          tick.textContent = MONTHS[month];
+          monthsEl.appendChild(tick);
+          lastMonth = month;
+        }
+      }
+    });
+
+    // Set months container width
+    monthsEl.style.minWidth = (weeks.length * cellStep) + 'px';
+  }
+
+  function buildLegend() {
+    const el = document.getElementById('terrain-legend');
+    if (!el) return;
+    el.innerHTML = '';
+    const c = colors();
+
+    for (let i = 0; i <= 4; i++) {
+      const s = document.createElement('div');
+      s.style.width = '10px';
+      s.style.height = '10px';
+      s.style.borderRadius = '2px';
+      s.style.background = c[i];
+      if (i === 4) s.style.boxShadow = '0 0 4px rgba(249, 115, 22, 0.3)';
+      if (i === 3) s.style.boxShadow = '0 0 3px rgba(139, 92, 246, 0.15)';
+      el.appendChild(s);
+    }
+  }
+
+  async function init() {
+    const map = document.getElementById('terrain-map');
+    const loading = document.getElementById('terrain-loading');
+    const totalEl = document.getElementById('terrain-total');
+    if (!map) return;
+
+    const username = map.dataset.username || 'octocat';
+
+    try {
+      const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${username}?y=last`);
+      const data = await res.json();
+
+      const total = data.total?.lastYear ?? Object.values(data.total ?? {})[0] ?? 0;
+      if (totalEl) totalEl.textContent = `${total} signals`;
+
+      buildGrid(data.contributions);
+      buildLegend();
+      loading?.remove();
+
+    } catch {
+      const grid = document.getElementById('terrain-grid');
+      if (grid) grid.innerHTML = '<span class="text-[9px] font-mono faint py-6">Signal lost — terrain unavailable</span>';
+      loading?.remove();
+    }
+  }
+
+  // Re-render on theme change
+  new MutationObserver(() => {
+    if (document.getElementById('terrain-grid')?.children.length) {
+      // Quick color update without re-fetch
+      const c = colors();
+      document.querySelectorAll('.terrain-cell[data-level]').forEach((cell) => {
+        const el = cell as HTMLElement;
+        const lvl = parseInt(el.dataset.level || '0');
+        el.style.background = c[lvl];
+      });
+      buildLegend();
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  init();
+</script>

@@ -1,0 +1,416 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TerrainMap from '../components/TerrainMap.astro';
+import { siteConfig, coordsFull, coordsShort, avatarUrl } from '../config';
+
+const yoe = Math.ceil((Date.now() - new Date(siteConfig.careerStart).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+const c = siteConfig;
+---
+
+<BaseLayout title={`${c.name.full} — ${c.role}`}>
+
+  <!-- Structured Data -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": c.name.full,
+    "url": c.siteUrl,
+    "jobTitle": c.role,
+    "description": c.tagline,
+    "address": { "@type": "PostalAddress", "addressLocality": c.location.city, "addressCountry": c.location.countryCode },
+    "sameAs": [
+      c.social.github.url,
+      c.social.linkedin.url,
+      c.social.devto.url,
+    ]
+  })} />
+
+  <!-- ══════ HERO ══════ -->
+  <section id="hero" class="relative min-h-[85vh] md:min-h-screen flex items-center overflow-hidden">
+    <canvas id="hero-canvas" class="absolute inset-0 w-full h-full" style="opacity:0.5"></canvas>
+    <div class="hero-glow"></div>
+
+    <!-- Coordinate HUD -->
+    <div class="hidden md:block absolute top-32 right-12 text-right hero-fade z-10 space-y-1">
+      <div class="text-[9px] font-mono faint tracking-[0.15em]">{coordsFull.lat}</div>
+      <div class="text-[9px] font-mono faint tracking-[0.15em]">{coordsFull.lon}</div>
+      <div class="text-[8px] font-mono text-[var(--color-accent)]/40 tracking-wider mt-2">ELEV 6m</div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 pt-28 pb-20">
+      <!-- Navigator portrait + Signal beacon -->
+      <div class="hero-fade flex items-center gap-5 mb-12">
+        <div class="navigator-portrait relative flex-shrink-0">
+          <div class="absolute -inset-1 rounded-full border border-dashed border-[var(--color-edge)] animate-[spin_30s_linear_infinite]"></div>
+          <div class="absolute -inset-2.5 rounded-full border border-dotted border-[var(--color-accent)]/20"></div>
+          <!-- Cardinal ticks -->
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 w-px h-1.5 bg-[var(--color-accent)]/40"></span>
+          <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-px h-1.5 bg-[var(--color-accent)]/40"></span>
+          <span class="absolute top-1/2 -left-3 -translate-y-1/2 h-px w-1.5 bg-[var(--color-accent)]/40"></span>
+          <span class="absolute top-1/2 -right-3 -translate-y-1/2 h-px w-1.5 bg-[var(--color-accent)]/40"></span>
+          <img
+            src={avatarUrl}
+            alt={c.name.full}
+            width="52"
+            height="52"
+            loading="eager"
+            class="w-13 h-13 rounded-full object-cover ring-1 ring-[var(--color-edge)] relative z-10"
+          />
+        </div>
+        <span class="inline-flex items-center gap-2.5 text-xs font-mono faint tracking-wider">
+          <span class="relative flex items-center justify-center w-2 h-2">
+            <span class="absolute inset-0 rounded-full bg-[var(--color-warm)] animate-ping opacity-30"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-warm)]"></span>
+          </span>
+          <span id="watch-greeting">Signal active</span>
+        </span>
+      </div>
+
+      <!-- Name -->
+      <h1>
+        <div class="overflow-hidden pb-1 mb-2">
+          <span class="line-reveal hero-title text-[clamp(3rem,11vw,8rem)] block">{c.name.first}</span>
+        </div>
+        <div class="overflow-hidden pb-1 mb-10">
+          <span class="line-reveal hero-title text-[clamp(3rem,11vw,8rem)] block">
+            {c.name.last}<span class="accent-warm">.</span>
+          </span>
+        </div>
+      </h1>
+
+      <!-- Tagline -->
+      <p class="hero-fade max-w-lg text-base md:text-lg dim leading-relaxed mb-5">
+        {c.tagline}
+      </p>
+
+      <!-- Personality icons -->
+      <div class="hero-fade flex items-center gap-3 mb-12">
+        <svg class="w-4 h-4 text-[var(--color-warm)] opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17 8h1a4 4 0 110 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8zM6 2v4M10 2v4M14 2v4"/></svg>
+        <span class="w-px h-3 bg-[var(--color-edge)]"></span>
+        <svg class="w-4 h-4 text-[var(--color-accent)] opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+        <span class="w-px h-3 bg-[var(--color-edge)]"></span>
+        <svg class="w-4 h-4 text-[var(--color-tertiary)] opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span class="w-px h-3 bg-[var(--color-edge)]"></span>
+        <svg class="w-4 h-4 text-[var(--color-warm)] opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      </div>
+
+      <!-- CTA -->
+      <div class="hero-fade flex flex-wrap gap-3">
+        <a href="#about" class="btn-primary magnetic">
+          <span>View origin</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+        </a>
+        <a href="#contact" class="btn-ghost magnetic">
+          <span>Send signal</span>
+        </a>
+      </div>
+
+      <script>
+        const h = new Date().getHours();
+        const greetings: [number, string][] = [
+          [5,  'Morning watch · First light detected'],
+          [8,  'Forenoon watch · Skies clear'],
+          [12, 'Midday bearing · Course steady'],
+          [17, 'Dog watch · Dusk on the horizon'],
+          [21, 'Night watch · Charting by starlight'],
+          [1,  'Graveyard watch · Late night signal'],
+        ];
+        const g = h >= 21 || h < 1 ? greetings[4][1]
+                : h < 5  ? greetings[5][1]
+                : h < 8  ? greetings[0][1]
+                : h < 12 ? greetings[1][1]
+                : h < 17 ? greetings[2][1]
+                :           greetings[3][1];
+        const el = document.getElementById('watch-greeting');
+        if (el) el.textContent = g;
+      </script>
+    </div>
+
+    <!-- Scroll South -->
+    <div class="absolute bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 hero-fade flex flex-col items-center gap-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-tertiary)] animate-pulse"></span>
+      <div class="w-px h-6 border-l border-dashed border-[var(--color-tertiary)]/40 animate-bounce"></div>
+    </div>
+
+    <!-- Canvas with constellation effect -->
+    <script>
+      const c = document.getElementById('hero-canvas') as HTMLCanvasElement;
+      if (c) {
+        const ctx = c.getContext('2d')!;
+        let w = 0, h = 0, mx = -9999, my = -9999;
+        interface Dot { x: number; y: number; ox: number; oy: number; }
+        const dots: Dot[] = [];
+        const sp = 48, radius = 180;
+
+        function resize() {
+          w = c.width = c.offsetWidth;
+          h = c.height = c.offsetHeight;
+          dots.length = 0;
+          for (let x = sp; x < w; x += sp)
+            for (let y = sp; y < h; y += sp)
+              dots.push({ x, y, ox: x, oy: y });
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        document.addEventListener('mousemove', (e) => {
+          const r = c.getBoundingClientRect();
+          mx = e.clientX - r.left; my = e.clientY - r.top;
+        });
+
+        const light = () => document.documentElement.dataset.theme === 'light';
+
+        (function loop() {
+          ctx.clearRect(0, 0, w, h);
+          const nearDots: Dot[] = [];
+
+          for (const d of dots) {
+            const dx = mx - d.ox, dy = my - d.oy;
+            const dist = Math.hypot(dx, dy);
+            if (dist < radius) {
+              const f = (1 - dist / radius) * 20;
+              d.x = d.ox + (dx / dist) * f;
+              d.y = d.oy + (dy / dist) * f;
+              nearDots.push(d);
+            } else {
+              d.x += (d.ox - d.x) * 0.08;
+              d.y += (d.oy - d.y) * 0.08;
+            }
+            const prox = Math.max(0, 1 - dist / radius);
+            const a = (light() ? 0.05 : 0.1) + prox * 0.55;
+            const s = 1 + prox * 2.5;
+
+            // Color shifts violet → orange near cursor center
+            const warmth = Math.max(0, 1 - dist / (radius * 0.35));
+            const cr = Math.round(139 + warmth * 110);
+            const cg = Math.round(92 + warmth * 23);
+            const cb = Math.round(246 - warmth * 224);
+
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, s, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, ${a})`;
+            ctx.fill();
+          }
+
+          // Constellation lines between nearby active dots
+          for (let i = 0; i < nearDots.length; i++) {
+            for (let j = i + 1; j < nearDots.length; j++) {
+              const ddx = nearDots[i].x - nearDots[j].x;
+              const ddy = nearDots[i].y - nearDots[j].y;
+              const dd = Math.hypot(ddx, ddy);
+              if (dd < 80) {
+                const alpha = (1 - dd / 80) * (light() ? 0.06 : 0.12);
+                ctx.beginPath();
+                ctx.moveTo(nearDots[i].x, nearDots[i].y);
+                ctx.lineTo(nearDots[j].x, nearDots[j].y);
+                ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+              }
+            }
+          }
+
+          requestAnimationFrame(loop);
+        })();
+      }
+    </script>
+  </section>
+
+
+  <!-- Route connector -->
+  <div class="route-connector reveal"></div>
+
+  <!-- ══════ ABOUT ══════ -->
+  <section id="about" class="py-16 md:py-28 lg:py-36 px-6 md:px-12">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex items-center gap-4 mb-16 reveal">
+        <span class="flex items-center gap-2.5 section-label">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"></span>
+          Origin
+        </span>
+        <div class="flex-1 h-0 border-t border-dashed border-[var(--color-edge)]"></div>
+        <span class="bearing-badge hidden md:block">SEC.01</span>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-10 lg:gap-16">
+        <!-- Text -->
+        <div class="lg:col-span-3 reveal">
+          <h2 class="font-[family-name:var(--font-display)] text-2xl md:text-[2.5rem] font-bold leading-[1.2] mb-8 text-[var(--color-text)]" set:html={`${c.about.headline}<span class="accent">.</span>`} />
+          <div class="space-y-4 leading-relaxed">
+            {c.about.paragraphs.map(p => <p>{p}</p>)}
+          </div>
+        </div>
+
+        <!-- Facts -->
+        <div class="lg:col-span-2 space-y-3 stagger">
+          <div class="card card-coord p-6">
+            <div class="font-[family-name:var(--font-display)] text-4xl font-bold accent-warm counter" data-count={yoe}>0</div>
+            <div class="text-sm dim mt-1">Years in production</div>
+            <a href="/resume.pdf" download class="inline-flex items-center gap-1.5 text-xs accent mt-3 hover:underline underline-offset-4">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Resume
+            </a>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="card p-5">
+              <span class="text-[10px] font-mono faint uppercase tracking-wider block mb-1.5">Stationed at</span>
+              <span class="text-sm font-medium text-[var(--color-text)]">{c.location.city}</span>
+              <span class="text-[8px] font-mono faint block mt-0.5 tracking-wider">{coordsShort}</span>
+            </div>
+            <div class="card p-5">
+              <span class="text-[10px] font-mono faint uppercase tracking-wider block mb-1.5">Bearing</span>
+              <span class="text-sm font-medium text-[var(--color-text)]">{c.specialty.split('/')[0].trim()}</span>
+            </div>
+          </div>
+
+          <div class="card p-5">
+            <span class="text-[10px] font-mono faint uppercase tracking-wider block mb-2.5">Shore Leave</span>
+            <div class="flex flex-wrap gap-1.5 mb-3">
+              {c.about.interests.map((t, i) => <span class={i % 2 === 0 ? 'tag-warm' : 'tag'}>{t}</span>)}
+            </div>
+            <div class="border-t border-dashed border-[var(--color-edge)] pt-2.5 flex items-center gap-2">
+              <span class="w-1 h-1 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+              <span class="text-[9px] font-mono faint tracking-wider">Reading: {c.about.reading}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Terrain Map -->
+      <div class="mt-10 reveal">
+        <TerrainMap username={c.social.github.username} />
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Route connector -->
+  <div class="route-connector reveal"></div>
+
+  <!-- ══════ CONTACT ══════ -->
+  <section id="contact" class="relative py-16 md:py-28 lg:py-36 px-6 md:px-12">
+    <div class="absolute inset-0 topo-grid"></div>
+    <div class="max-w-5xl mx-auto relative">
+      <div class="flex items-center gap-4 mb-16 reveal">
+        <span class="flex items-center gap-2.5 section-label">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-tertiary)]"></span>
+          Signal
+        </span>
+        <div class="flex-1 h-0 border-t border-dashed border-[var(--color-edge)]"></div>
+        <span class="bearing-badge hidden md:block">SEC.03</span>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-14 lg:gap-20">
+        <div class="reveal">
+          <h2 class="font-[family-name:var(--font-display)] text-3xl md:text-5xl font-bold text-[var(--color-text)] leading-tight mb-6">
+            Open channel<span class="accent-warm">.</span>
+          </h2>
+          <p class="dim leading-relaxed mb-10">
+            Interesting project, collaboration, or just a good conversation over filter coffee? Send a signal.
+          </p>
+
+          <div class="space-y-3">
+            <a href={c.social.github.url} target="_blank" rel="noopener noreferrer" class="group flex items-center gap-3 dim hover:text-[var(--color-accent)] transition-colors">
+              <div class="w-9 h-9 rounded-lg bg-[var(--color-surface)] border border-[var(--color-edge)] flex items-center justify-center group-hover:border-[var(--color-accent)]/30 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              </div>
+              <span class="text-sm">{c.social.github.username}</span>
+            </a>
+            <a href={c.social.linkedin.url} target="_blank" rel="noopener noreferrer" class="group flex items-center gap-3 dim hover:text-[var(--color-accent)] transition-colors">
+              <div class="w-9 h-9 rounded-lg bg-[var(--color-surface)] border border-[var(--color-edge)] flex items-center justify-center group-hover:border-[var(--color-accent)]/30 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              </div>
+              <span class="text-sm">{c.social.linkedin.username}</span>
+            </a>
+          </div>
+        </div>
+
+        <form id="contact-form" novalidate class="space-y-4 reveal" data-key={c.web3formsKey}>
+          <div>
+            <label class="block text-[11px] font-mono faint uppercase tracking-wider mb-2">Callsign</label>
+            <input type="text" name="name" required class="input-field" placeholder="Your name" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-mono faint uppercase tracking-wider mb-2">Frequency</label>
+            <input type="email" name="email" required class="input-field" placeholder="you@example.com" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-mono faint uppercase tracking-wider mb-2">Transmission</label>
+            <textarea name="message" rows="5" required class="input-field resize-none" placeholder="What's on your mind?"></textarea>
+          </div>
+          <button type="submit" id="contact-submit" class="btn-primary magnetic w-full justify-center">
+            <span id="contact-submit-text">Transmit</span>
+            <svg id="contact-submit-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div id="contact-success" class="hidden text-sm text-center py-3 px-4 rounded-lg bg-[rgba(74,222,128,0.1)] text-[#4ade80] border border-[rgba(74,222,128,0.2)]">
+            Signal received. I'll respond on your frequency.
+          </div>
+          <div id="contact-error" class="hidden text-sm text-center py-3 px-4 rounded-lg bg-[rgba(239,68,68,0.1)] text-[#ef4444] border border-[rgba(239,68,68,0.2)]">
+            Something went wrong. Try again or email me directly.
+          </div>
+          <p class="text-xs dim text-center mt-2">Or email me at <a href={`mailto:${c.email}`} class="accent hover:underline underline-offset-4">{c.email}</a></p>
+        </form>
+
+        <script>
+          const form = document.getElementById('contact-form') as HTMLFormElement;
+          const submitBtn = document.getElementById('contact-submit') as HTMLButtonElement;
+          const submitText = document.getElementById('contact-submit-text')!;
+          const submitIcon = document.getElementById('contact-submit-icon')!;
+          const successMsg = document.getElementById('contact-success')!;
+          const errorMsg = document.getElementById('contact-error')!;
+
+          function validateEmail(email: string): boolean {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+          }
+
+          form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            successMsg.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+
+            const name = (form.elements.namedItem('name') as HTMLInputElement).value.trim();
+            const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
+            const message = (form.elements.namedItem('message') as HTMLTextAreaElement).value.trim();
+
+            if (!name || !email || !message) {
+              errorMsg.textContent = 'Please fill in all fields.';
+              errorMsg.classList.remove('hidden');
+              return;
+            }
+            if (!validateEmail(email)) {
+              errorMsg.textContent = 'Please enter a valid email address.';
+              errorMsg.classList.remove('hidden');
+              return;
+            }
+
+            submitBtn.disabled = true;
+            submitText.textContent = 'Transmitting...';
+            submitIcon.classList.add('hidden');
+
+            try {
+              const res = await fetch('https://api.web3forms.com/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ access_key: form.dataset.key!, name, email, message }),
+              });
+              if (res.ok) {
+                successMsg.classList.remove('hidden');
+                form.reset();
+              } else {
+                throw new Error('Form submission failed');
+              }
+            } catch {
+              errorMsg.textContent = 'Something went wrong. Try again or email me directly.';
+              errorMsg.classList.remove('hidden');
+            } finally {
+              submitBtn.disabled = false;
+              submitText.textContent = 'Transmit';
+              submitIcon.classList.remove('hidden');
+            }
+          });
+        </script>
+      </div>
+    </div>
+  </section>
+
+</BaseLayout>

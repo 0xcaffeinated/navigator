@@ -1,0 +1,265 @@
+---
+import { siteConfig, coordsShort } from '../config';
+
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { label: 'Origin', href: '/#about', section: 'about', coord: coordsShort.split(' ')[0] },
+  { label: 'Logbook', href: '/blog', section: null, coord: 'LOG' },
+  { label: 'Library', href: '/books', section: null, coord: 'LIB' },
+  { label: 'Signal', href: '/#contact', section: 'contact', coord: 'TX' },
+];
+
+function isPageActive(href: string) {
+  if (href.startsWith('/#')) return false;
+  return currentPath.startsWith(href);
+}
+---
+
+<!-- ═══ DESKTOP SIDEBAR ═══ -->
+<aside id="side-nav" class="hidden md:flex fixed left-0 top-0 bottom-0 w-[72px] hover:w-[220px] z-[100] group/nav transition-[width] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]">
+  <div class="sidebar-glass relative h-full m-2 rounded-2xl flex flex-col overflow-hidden">
+
+    <!-- Vertical scroll progress -->
+    <div id="sidebar-progress" class="absolute right-0 top-0 w-[2px] h-full rounded-full origin-top z-10" style="transform:scaleY(0)">
+      <div class="w-full h-full rounded-full bg-gradient-to-b from-[var(--color-accent)] to-[var(--color-warm)]"></div>
+    </div>
+
+    <!-- Compass Logo -->
+    <div class="p-3 pt-5 pb-3">
+      <a href="/" class="flex items-center gap-3 group/logo">
+        <div class="shrink-0 w-8 h-8 relative flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border border-[var(--color-accent)]/40 group-hover/logo:border-[var(--color-accent)] transition-colors duration-300"></div>
+          <div class="compass-needle absolute w-[1px] h-3.5 bg-gradient-to-b from-[var(--color-warm)] to-[var(--color-accent)] origin-center transition-transform duration-700 group-hover/logo:rotate-[360deg]"></div>
+          <div class="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] relative z-10"></div>
+          <span class="absolute top-[1px] left-1/2 -translate-x-1/2 text-[5px] font-mono font-bold text-[var(--color-warm)]">N</span>
+        </div>
+        <div class="nav-label flex flex-col -space-y-0.5 min-w-0">
+          <span class="text-sm font-semibold font-[family-name:var(--font-display)] text-[var(--color-text)] group-hover/logo:text-[var(--color-accent)] transition-colors truncate">{siteConfig.name.short}</span>
+          <span class="text-[8px] font-mono faint tracking-[0.12em]">{coordsShort}</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Cockpit Instruments -->
+    <div class="px-1 pb-1">
+      <div class="flex flex-col gap-0.5">
+        <button class="navcom-toggle group/cmd flex items-center gap-3 pl-[16px] pr-3 py-1.5 mx-1 rounded-lg hover:bg-white/[0.04] transition-all duration-200 cursor-pointer" aria-label="Open NavCom terminal">
+          <svg class="shrink-0 w-3 h-3 text-[var(--color-accent)] opacity-70 group-hover/cmd:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+          <div class="nav-label flex flex-col min-w-0">
+            <span class="text-[12px] font-mono font-medium tracking-wide text-[var(--color-accent)] truncate">CMD</span>
+            <span class="text-[8px] font-mono faint tracking-[0.1em] -mt-0.5 truncate">NAVCOM</span>
+          </div>
+        </button>
+        <button class="map-toggle group/map flex items-center gap-3 pl-[16px] pr-3 py-1.5 mx-1 rounded-lg hover:bg-white/[0.04] transition-all duration-200 cursor-pointer" aria-label="Open chart plotter">
+          <svg class="shrink-0 w-3 h-3 text-[var(--color-warm)] opacity-70 group-hover/map:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <div class="nav-label flex flex-col min-w-0">
+            <span class="text-[12px] font-mono font-medium tracking-wide text-[var(--color-warm)] truncate">MAP</span>
+            <span class="text-[8px] font-mono faint tracking-[0.1em] -mt-0.5 truncate">CHART</span>
+          </div>
+        </button>
+      </div>
+      <div class="w-6 mx-auto mt-2 border-t border-dashed border-[var(--color-faint)]/20"></div>
+    </div>
+
+    <!-- Waypoints -->
+    <nav class="flex-1 flex flex-col justify-center py-2" aria-label="Main navigation">
+      {links.map((link, i) => (
+        <>
+          <a
+            href={link.href}
+            data-section={link.section || undefined}
+            class:list={[
+              'nav-link waypoint flex items-center gap-3 pl-[18px] pr-3 py-2 mx-1 rounded-lg transition-all duration-200 group/wp',
+              isPageActive(link.href)
+                ? 'nav-link-active'
+                : 'hover:bg-white/[0.04]',
+            ]}
+          >
+            <span class:list={[
+              'waypoint-dot w-2 h-2 rounded-full shrink-0 transition-all duration-300 relative z-10',
+              isPageActive(link.href)
+                ? 'bg-[var(--color-accent)] shadow-[0_0_6px_rgba(139,92,246,0.5)]'
+                : 'bg-[var(--color-faint)]/50 group-hover/wp:bg-[var(--color-accent)]',
+            ]}></span>
+            <div class="nav-label flex flex-col min-w-0">
+              <span class:list={[
+                'text-[12px] font-mono font-medium tracking-wide transition-colors duration-200 truncate',
+                isPageActive(link.href) ? 'text-[var(--color-accent)]' : 'dim group-hover/wp:text-[var(--color-text)]',
+              ]}>{link.label}</span>
+              <span class:list={[
+                'text-[8px] font-mono tracking-[0.1em] -mt-0.5 truncate',
+                isPageActive(link.href) ? 'text-[var(--color-warm)]' : 'faint',
+              ]}>{link.coord}</span>
+            </div>
+          </a>
+          {i < links.length - 1 && (
+            <div class="route-seg w-px h-3 ml-[22px] border-l border-dashed border-[var(--color-faint)]/25"></div>
+          )}
+        </>
+      ))}
+    </nav>
+
+    <!-- Bottom Controls -->
+    <div class="p-3 pt-2 mt-auto">
+      <div class="border-t border-[var(--color-edge)]/30 pt-3 flex items-center gap-2">
+        <button class="theme-toggle-btn w-8 h-8 shrink-0 rounded-lg flex items-center justify-center dim hover:text-[var(--color-accent)] hover:bg-white/[0.04] transition-all duration-200 cursor-pointer" aria-label="Toggle theme">
+          <div class="relative w-4 h-4">
+            <svg class="icon-sun theme-icon theme-icon-hidden w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg class="icon-moon theme-icon w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+        </button>
+        <div class="nav-label flex items-center gap-1.5">
+          <div class="w-1 h-1 rounded-full bg-[var(--color-tertiary)] animate-pulse"></div>
+          <span class="text-[9px] font-mono faint tracking-wider bearing-text">000°</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MOBILE BOTTOM BAR ═══ -->
+<nav id="mobile-bar" class="md:hidden fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]">
+  <div class="nav-glass mx-3 mb-3 rounded-2xl px-1.5 py-2">
+    <div class="flex items-center justify-around">
+      <!-- Compass home -->
+      <a href="/" class="flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg group/mh" aria-label="Home">
+        <div class="w-6 h-6 relative flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border border-[var(--color-accent)]/40"></div>
+          <div class="w-1 h-1 rounded-full bg-[var(--color-accent)]"></div>
+          <span class="absolute top-[0px] left-1/2 -translate-x-1/2 text-[4px] font-mono font-bold text-[var(--color-warm)]">N</span>
+        </div>
+      </a>
+
+      <!-- Waypoints -->
+      {links.map((link) => (
+        <a
+          href={link.href}
+          data-section={link.section || undefined}
+          class:list={[
+            'mobile-wp nav-link flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors',
+            isPageActive(link.href) ? 'nav-link-active' : '',
+          ]}
+        >
+          <span class:list={[
+            'w-1.5 h-1.5 rounded-full transition-all duration-300',
+            isPageActive(link.href)
+              ? 'bg-[var(--color-accent)] shadow-[0_0_4px_rgba(139,92,246,0.5)]'
+              : 'bg-[var(--color-faint)]/40',
+          ]}></span>
+          <span class:list={[
+            'text-[9px] font-mono tracking-wide transition-colors',
+            isPageActive(link.href) ? 'text-[var(--color-accent)]' : 'faint',
+          ]}>{link.label}</span>
+        </a>
+      ))}
+
+      <!-- Cockpit tools -->
+      <button class="navcom-toggle flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-lg transition-colors cursor-pointer" aria-label="Open NavCom terminal">
+        <svg class="w-3.5 h-3.5 text-[var(--color-accent)] opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+        <span class="text-[8px] font-mono text-[var(--color-accent)]/60 tracking-wider">CMD</span>
+      </button>
+      <button class="map-toggle flex flex-col items-center gap-0.5 px-2.5 py-2 rounded-lg transition-colors cursor-pointer" aria-label="Open chart plotter">
+        <svg class="w-3.5 h-3.5 text-[var(--color-warm)] opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <span class="text-[8px] font-mono text-[var(--color-warm)]/60 tracking-wider">MAP</span>
+      </button>
+
+      <!-- Theme toggle -->
+      <button class="theme-toggle-btn flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg dim hover:text-[var(--color-accent)] transition-colors cursor-pointer" aria-label="Toggle theme">
+        <div class="relative w-4 h-4">
+          <svg class="icon-sun theme-icon theme-icon-hidden w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="icon-moon theme-icon w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<script>
+  const html = document.documentElement;
+
+  // ─── Theme toggle (all toggle buttons) ───
+  const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+  const suns = document.querySelectorAll('.icon-sun');
+  const moons = document.querySelectorAll('.icon-moon');
+
+  function setIcons(t: string) {
+    suns.forEach(s => {
+      s.classList.toggle('theme-icon-hidden', t !== 'light');
+    });
+    moons.forEach(m => {
+      m.classList.toggle('theme-icon-hidden', t === 'light');
+    });
+  }
+  setIcons(html.dataset.theme || 'dark');
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      html.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      setIcons(next);
+    });
+  });
+
+  // ─── Bearing indicator (scroll → degrees) ───
+  const bearingEls = document.querySelectorAll('.bearing-text');
+  if (bearingEls.length) {
+    const updateBearing = () => {
+      const scrollPct = window.scrollY / (document.body.scrollHeight - window.innerHeight || 1);
+      const degrees = Math.round(scrollPct * 360);
+      const text = String(degrees).padStart(3, '0') + '°';
+      bearingEls.forEach(el => { el.textContent = text; });
+    };
+    window.addEventListener('scroll', updateBearing, { passive: true });
+    updateBearing();
+  }
+
+  // ─── Mobile bar hide/show on scroll ───
+  const mobileBar = document.getElementById('mobile-bar');
+  let lastY = 0;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (y > lastY && y > 200) mobileBar?.classList.add('hidden-mobile-bar');
+    else mobileBar?.classList.remove('hidden-mobile-bar');
+    lastY = y;
+  });
+
+  // ─── Scroll spy (home page only) ───
+  const sideLinks = document.querySelectorAll('#side-nav a.nav-link[data-section]') as NodeListOf<HTMLElement>;
+  const mobileWps = document.querySelectorAll('#mobile-bar a.nav-link[data-section]') as NodeListOf<HTMLElement>;
+  const sections = document.querySelectorAll('section[id]');
+
+  if (sections.length && window.location.pathname === '/') {
+    const activate = (id: string) => {
+      [sideLinks, mobileWps].forEach(linkSet => {
+        linkSet.forEach((link) => {
+          const match = link.dataset.section === id;
+          link.classList.toggle('nav-link-active', match);
+
+          // Update dots
+          const dot = link.querySelector('.waypoint-dot, span:first-child');
+          if (dot) {
+            if (match) {
+              dot.classList.add('bg-[var(--color-accent)]');
+              dot.classList.remove('bg-[var(--color-faint)]/50', 'bg-[var(--color-faint)]/40');
+            } else {
+              dot.classList.remove('bg-[var(--color-accent)]');
+            }
+          }
+        });
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) activate(entry.target.id);
+        }
+      },
+      { rootMargin: '-20% 0px -60% 0px' }
+    );
+
+    sections.forEach((s) => observer.observe(s));
+  }
+</script>

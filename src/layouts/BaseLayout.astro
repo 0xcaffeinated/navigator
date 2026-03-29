@@ -1,0 +1,273 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import NavComOverlay from '../components/NavComOverlay.astro';
+import MapOverlay from '../components/MapOverlay.astro';
+import '../styles/global.css';
+import { siteConfig } from '../config';
+
+interface Props {
+  title: string;
+  description?: string;
+  noindex?: boolean;
+  image?: string;
+}
+
+const { title, description = siteConfig.description, noindex = false, image = "/og-image.png" } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || siteConfig.siteUrl);
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex, nofollow" /> : <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />}
+    <link rel="canonical" href={canonicalURL.href} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:image" content={new URL(image, Astro.site || siteConfig.siteUrl).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content={siteConfig.name.full} />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(image, Astro.site || siteConfig.siteUrl).href} />
+
+    <meta name="theme-color" content="#8b5cf6" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="dns-prefetch" href="https://unpkg.com" />
+    <link rel="dns-prefetch" href="https://dev.to" />
+  </head>
+  <body>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--color-accent)] focus:text-white focus:text-sm focus:font-mono">Skip to content</a>
+    <div id="scroll-progress" style="transform:scaleX(0)"></div>
+
+    <Header />
+
+    <div class="md:ml-[72px] pb-20 md:pb-0">
+      <main id="main-content">
+        <slot />
+      </main>
+
+      <Footer />
+    </div>
+
+    <NavComOverlay />
+    <MapOverlay />
+
+    <!-- No-flash theme init -->
+    <script is:inline>
+      (function(){
+        var t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+
+    <!-- Master script -->
+    <script>
+      import { gsap } from 'gsap';
+      import { ScrollTrigger } from 'gsap/ScrollTrigger';
+      import Lenis from 'lenis';
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ─── Smooth scroll ───
+      const lenis = new Lenis({
+        duration: prefersReducedMotion ? 0 : 1.2,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      });
+      if (!prefersReducedMotion) {
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add((time) => lenis.raf(time * 1000));
+      }
+      gsap.ticker.lagSmoothing(0);
+
+      // ─── Scroll progress ───
+      const bar = document.getElementById('scroll-progress');
+      if (bar) {
+        gsap.to(bar, {
+          scaleX: 1,
+          ease: 'none',
+          scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 0.3 },
+        });
+      }
+
+      // ─── Sidebar entrance (desktop) ───
+      gsap.from('#side-nav', {
+        x: -20,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power4.out',
+        delay: 0.1,
+        clearProps: 'all',
+      });
+
+      // ─── Mobile bar entrance ───
+      gsap.from('#mobile-bar', {
+        y: 20,
+        opacity: 0,
+        duration: 0.8,
+        ease: 'power4.out',
+        delay: 0.3,
+        clearProps: 'all',
+      });
+
+      // ─── Hero entrance (orchestrated timeline) ───
+      const hero = gsap.timeline({ defaults: { ease: 'power4.out' } });
+
+      hero.from('.line-reveal', {
+        y: '120%',
+        opacity: 0,
+        rotateX: -10,
+        duration: 1.6,
+        stagger: 0.12,
+      }, 0.2);
+
+      hero.from('.hero-fade', {
+        y: 30,
+        opacity: 0,
+        duration: 1.2,
+        stagger: 0.1,
+      }, 0.9);
+
+      // ─── Scroll reveals ───
+      document.querySelectorAll('.reveal').forEach((el) => {
+        gsap.fromTo(el,
+          { y: 50, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 1.2,
+            ease: 'power4.out',
+            scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+          }
+        );
+      });
+
+      // ─── Separator line draw ───
+      document.querySelectorAll('.separator').forEach((sep) => {
+        gsap.fromTo(sep,
+          { scaleX: 0, transformOrigin: 'left center' },
+          {
+            scaleX: 1,
+            duration: 1.4,
+            ease: 'power3.inOut',
+            scrollTrigger: { trigger: sep, start: 'top 92%', once: true },
+          }
+        );
+      });
+
+      // ─── Stagger children ───
+      document.querySelectorAll('.stagger').forEach((container) => {
+        gsap.fromTo(
+          container.children,
+          { y: 50, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 1,
+            stagger: 0.12,
+            ease: 'power4.out',
+            scrollTrigger: { trigger: container, start: 'top 86%', once: true },
+          }
+        );
+      });
+
+      // ─── Magnetic buttons ───
+      document.querySelectorAll('.magnetic').forEach((btn) => {
+        const el = btn as HTMLElement;
+        el.addEventListener('mousemove', (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          const x = e.clientX - r.left - r.width / 2;
+          const y = e.clientY - r.top - r.height / 2;
+          gsap.to(el, { x: x * 0.25, y: y * 0.25, duration: 0.4, ease: 'power3.out' });
+        });
+        el.addEventListener('mouseleave', () => {
+          gsap.to(el, { x: 0, y: 0, duration: 0.8, ease: 'elastic.out(1, 0.4)' });
+        });
+      });
+
+      // ─── 3D tilt (GSAP-driven) ───
+      document.querySelectorAll('.tilt').forEach((card) => {
+        const el = card as HTMLElement;
+        el.addEventListener('mousemove', (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5;
+          const y = (e.clientY - r.top) / r.height - 0.5;
+          gsap.to(el, {
+            rotateY: x * 8,
+            rotateX: -y * 8,
+            y: -4,
+            duration: 0.4,
+            ease: 'power2.out',
+            transformPerspective: 800,
+          });
+        });
+        el.addEventListener('mouseleave', () => {
+          gsap.to(el, {
+            rotateY: 0,
+            rotateX: 0,
+            y: 0,
+            duration: 0.7,
+            ease: 'power3.out',
+          });
+        });
+      });
+
+      // ─── Counters ───
+      document.querySelectorAll<HTMLElement>('.counter').forEach((el) => {
+        const target = parseInt(el.dataset.count || '0');
+        const obj = { val: 0 };
+        gsap.to(obj, {
+          val: target,
+          duration: 2,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+          onUpdate: () => { el.textContent = Math.round(obj.val).toString(); },
+        });
+      });
+
+      // ─── Sidebar scroll progress ───
+      const sidebarProgress = document.getElementById('sidebar-progress');
+      if (sidebarProgress) {
+        gsap.to(sidebarProgress, {
+          scaleY: 1,
+          ease: 'none',
+          scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 0.3 },
+        });
+      }
+
+      // ─── Hero canvas parallax ───
+      const heroCanvas = document.getElementById('hero-canvas');
+      if (heroCanvas) {
+        gsap.to(heroCanvas, {
+          y: 80,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#hero',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+          },
+        });
+      }
+    </script>
+  </body>
+</html>

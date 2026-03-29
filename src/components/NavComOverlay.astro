@@ -1,0 +1,555 @@
+---
+import { getCollection } from 'astro:content';
+import { siteConfig, coordsShort, contributionsUrl } from '../config';
+
+const yoe = Math.ceil((Date.now() - new Date(siteConfig.careerStart).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+const startDate = new Date(siteConfig.careerStart);
+const now = new Date();
+const diffMs = now.getTime() - startDate.getTime();
+const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+const years = Math.floor(days / 365);
+const months = Math.floor((days % 365) / 30);
+const remDays = days % 30;
+const uptimeStr = `${years}y ${months}m ${remDays}d`;
+
+const localPosts = (await getCollection('blog'))
+  .filter(p => !p.data.draft)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .map(p => ({ title: p.data.title, date: new Date(p.data.date).toISOString().slice(0, 10), href: `/blog/${p.id}` }));
+
+const books = (await getCollection('books'))
+  .map(b => ({ title: b.data.title, status: b.data.status, genre: b.data.genre }));
+
+const statusLabel: Record<string, string> = { writing: 'CHARTING', planned: 'PLOTTED', published: 'MAPPED' };
+---
+
+<!-- ═══ NAVCOM OVERLAY ═══ -->
+<div id="navcom-overlay" class="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-8 opacity-0 pointer-events-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+  <div id="navcom-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+  <div id="navcom-panel" class="relative w-full md:max-w-3xl h-[calc(100vh-100px)] md:h-[75vh] flex flex-col translate-y-4 scale-[0.98] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+
+    <!-- Title bar -->
+    <div class="flex items-center justify-between px-4 py-2.5 rounded-t-xl border border-b-0 border-[var(--color-edge)] bg-[var(--color-surface)]">
+      <div class="flex items-center gap-2.5">
+        <div class="flex gap-1.5">
+          <button id="navcom-close" class="w-2.5 h-2.5 rounded-full bg-[var(--color-warm)] hover:brightness-125 transition-all cursor-pointer" title="Close"></button>
+          <div class="w-2.5 h-2.5 rounded-full bg-[var(--color-accent)]/40"></div>
+          <div class="w-2.5 h-2.5 rounded-full bg-[var(--color-tertiary)]/40"></div>
+        </div>
+        <span class="text-[9px] font-mono faint tracking-[0.15em] uppercase ml-2">NavCom v2.1</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-1 h-1 rounded-full bg-[var(--color-tertiary)] animate-pulse"></span>
+        <span class="text-[8px] font-mono faint tracking-wider">ONLINE</span>
+      </div>
+    </div>
+
+    <!-- Screen -->
+    <div id="navcom-terminal" class="relative flex-1 rounded-b-none md:rounded-b-xl border border-[var(--color-edge)] bg-[var(--color-bg)] overflow-hidden cursor-text">
+      <div class="crt-overlay pointer-events-none absolute inset-0 z-10"></div>
+      <div id="navcom-output" class="p-5 md:p-6 font-mono text-[13px] leading-relaxed overflow-y-auto h-full pb-16 term-scroll"></div>
+      <div class="absolute bottom-0 left-0 right-0 px-5 md:px-6 py-3 bg-[var(--color-bg)] border-t border-[var(--color-edge)]/30 flex items-center gap-2 z-20" id="navcom-input-row" style="display:none">
+        <span class="text-[var(--color-accent)] text-[13px] font-mono shrink-0">navigator@13N ~ $</span>
+        <input id="navcom-input" type="text" class="flex-1 bg-transparent border-none outline-none text-[var(--color-text)] font-mono text-[13px] caret-[var(--color-accent)]" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  .crt-overlay {
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+  [data-theme="dark"] .crt-overlay {
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+  }
+  .t-accent { color: var(--color-accent); }
+  .t-warm { color: var(--color-warm); }
+  .t-cyan { color: var(--color-tertiary); }
+  .t-dim { color: var(--color-dim); }
+  .t-faint { color: var(--color-faint); }
+  .t-text { color: var(--color-text); }
+  .t-ok { color: #4ade80; }
+  .term-line { margin-bottom: 2px; white-space: pre-wrap; word-break: break-word; }
+  .term-scroll::-webkit-scrollbar { width: 4px; }
+  .term-scroll::-webkit-scrollbar-track { background: transparent; }
+  .term-scroll::-webkit-scrollbar-thumb { background: var(--color-faint); border-radius: 4px; opacity: 0.3; }
+  #navcom-input { line-height: 1.5; }
+</style>
+
+<script is:inline define:vars={{
+  localPosts, books, statusLabel, yoe, uptimeStr,
+  navName: siteConfig.name.full,
+  navShort: siteConfig.name.short,
+  navRole: siteConfig.role,
+  navSpecialty: siteConfig.specialty,
+  navCity: `${siteConfig.location.city}, ${siteConfig.location.country}`,
+  navCoords: coordsShort,
+  navGithub: siteConfig.social.github.username,
+  navGithubUrl: `github.com/${siteConfig.social.github.username}`,
+  navLinkedin: `linkedin.com/in/${siteConfig.social.linkedin.username}`,
+  navDevto: `dev.to/${siteConfig.social.devto.username}`,
+  navCoffee: `buymeacoffee.com/${siteConfig.social.buymeacoffee.username}`,
+  navContribUrl: contributionsUrl,
+  navManName: siteConfig.man.name,
+  navManFlags: siteConfig.man.flags,
+  navManDesc: siteConfig.man.description,
+  navManOffDuty: siteConfig.man.offDuty,
+}}>
+  window.__navcom = {
+    localPosts, books, statusLabel, yoe, uptimeStr,
+    navName, navShort, navRole, navSpecialty, navCity, navCoords,
+    navGithub, navGithubUrl, navLinkedin, navDevto, navCoffee, navContribUrl,
+    navManName, navManFlags, navManDesc, navManOffDuty,
+  };
+</script>
+
+<script>
+  const overlay = document.getElementById('navcom-overlay')!;
+  const backdrop = document.getElementById('navcom-backdrop')!;
+  const panel = document.getElementById('navcom-panel')!;
+  const closeBtn = document.getElementById('navcom-close')!;
+  const output = document.getElementById('navcom-output')!;
+  const inputRow = document.getElementById('navcom-input-row')!;
+  const input = document.getElementById('navcom-input') as HTMLInputElement;
+  const terminal = document.getElementById('navcom-terminal')!;
+  const data = (window as any).__navcom;
+
+  let isOpen = false;
+  let booted = false;
+  let cmdGen = 0;
+  const cmdHistory: string[] = [];
+  let histIdx = -1;
+
+  // ── Open / Close ──
+
+  function openNavcom() {
+    isOpen = true;
+    overlay.classList.remove('opacity-0', 'pointer-events-none');
+    overlay.classList.add('opacity-100', 'pointer-events-auto');
+    panel.classList.remove('translate-y-4', 'scale-[0.98]');
+    panel.classList.add('translate-y-0', 'scale-100');
+    document.body.style.overflow = 'hidden';
+    if (!booted) { boot(); booted = true; }
+    else { input.focus(); }
+  }
+
+  function closeNavcom() {
+    isOpen = false;
+    overlay.classList.add('opacity-0', 'pointer-events-none');
+    overlay.classList.remove('opacity-100', 'pointer-events-auto');
+    panel.classList.add('translate-y-4', 'scale-[0.98]');
+    panel.classList.remove('translate-y-0', 'scale-100');
+    document.body.style.overflow = '';
+  }
+
+  // Attach to all .navcom-toggle buttons (in sidebar & mobile bar)
+  document.querySelectorAll('.navcom-toggle').forEach(btn => {
+    btn.addEventListener('click', () => { if (isOpen) closeNavcom(); else openNavcom(); });
+  });
+
+  closeBtn.addEventListener('click', closeNavcom);
+  backdrop.addEventListener('click', closeNavcom);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) closeNavcom();
+    if (e.key === '`' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (isOpen) closeNavcom(); else openNavcom();
+    }
+  });
+
+  // ── Helpers ──
+
+  function line(html: string, cls = '') {
+    const div = document.createElement('div');
+    div.className = `term-line ${cls}`;
+    div.innerHTML = html;
+    output.appendChild(div);
+  }
+  function blank() { line('&nbsp;'); }
+  function scrollBottom() { output.scrollTop = output.scrollHeight; }
+  function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ── Boot Sequence ──
+
+  async function boot() {
+    await sleep(300);
+    line('<span class="t-accent font-bold">NAVCOM v2.1</span> <span class="t-faint">\u2014 Navigation Computer</span>');
+    await sleep(200);
+    line('<span class="t-faint">Initializing systems...</span>');
+    await sleep(300);
+
+    const checks: [string, string][] = [
+      ['Coordinates locked', data.navCoords],
+      ['Signal array', 'ONLINE'],
+      ['Terrain mapper', 'ACTIVE'],
+      ['Logbook', `${data.localPosts.length} local entries`],
+      ['Uptime', data.uptimeStr],
+    ];
+
+    for (const [label, val] of checks) {
+      line(`<span class="t-ok">[OK]</span> <span class="t-dim">${label}:</span> <span class="t-text">${val}</span>`);
+      await sleep(150);
+    }
+
+    blank();
+    line('<span class="t-dim">Ready. Type</span> <span class="t-accent">help</span> <span class="t-dim">for available commands.</span>');
+    blank();
+    inputRow.style.display = '';
+    input.focus();
+    scrollBottom();
+  }
+
+  // ── Commands ──
+
+  const commands: Record<string, (gen: number) => void> = {
+
+    help() {
+      const cmds: [string, string][] = [
+        ['whoami',  'Display crew manifest'],
+        ['log',     'Browse logbook entries'],
+        ['library', 'View book collection'],
+        ['signal',  'Contact & social links'],
+        ['terrain', 'GitHub contribution map'],
+        ['uptime',  'Time since deployment'],
+        ['ping',    'Test signal strength'],
+        ['coffee',  'Dispense filter coffee'],
+        ['history', 'Career voyage timeline'],
+        ['clear',   'Clear terminal output'],
+        ['exit',    'Close NavCom console'],
+      ];
+      blank();
+      line('<span class="t-accent">Available commands:</span>');
+      blank();
+      for (const [cmd, desc] of cmds) {
+        line(`  <span class="t-warm">${cmd.padEnd(12)}</span><span class="t-dim">${desc}</span>`);
+      }
+      blank();
+    },
+
+    whoami() {
+      blank();
+      line('<span class="t-accent">\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510</span>');
+      line(`<span class="t-accent">\u2502</span> <span class="t-text font-bold">${data.navName}</span>              <span class="t-accent">\u2502</span>`);
+      line('<span class="t-accent">\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524</span>');
+      line(`<span class="t-accent">\u2502</span> <span class="t-faint">Role</span>      <span class="t-text">${data.navRole}</span>       <span class="t-accent">\u2502</span>`);
+      line(`<span class="t-accent">\u2502</span> <span class="t-faint">YOE</span>       <span class="t-warm">${data.yoe} years</span>                <span class="t-accent">\u2502</span>`);
+      line(`<span class="t-accent">\u2502</span> <span class="t-faint">Base</span>      <span class="t-text">${data.navCity}</span>          <span class="t-accent">\u2502</span>`);
+      line(`<span class="t-accent">\u2502</span> <span class="t-faint">Coords</span>    <span class="t-cyan">${data.navCoords}</span>         <span class="t-accent">\u2502</span>`);
+      line(`<span class="t-accent">\u2502</span> <span class="t-faint">Bearing</span>   <span class="t-text">${data.navSpecialty}</span>       <span class="t-accent">\u2502</span>`);
+      line('<span class="t-accent">\u2502</span> <span class="t-faint">Off-duty</span>  <span class="t-text">History, Travel, Coffee</span> <span class="t-accent">\u2502</span>');
+      line('<span class="t-accent">\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518</span>');
+      blank();
+    },
+
+    log() {
+      blank();
+      line('<span class="t-accent">Logbook entries:</span>');
+      blank();
+      if (data.localPosts.length === 0) {
+        line('<span class="t-faint">  No local entries. Tech logs at</span> <span class="t-accent">/blog</span>');
+      } else {
+        for (const p of data.localPosts) {
+          line(`  <span class="t-faint">${p.date}</span>  <span class="t-text">${p.title}</span>`);
+        }
+      }
+      blank();
+      line('<span class="t-dim">Tech logs (dev.to) available at</span> <span class="t-accent">/blog</span>');
+      blank();
+    },
+
+    library() {
+      blank();
+      line('<span class="t-accent">Library manifest:</span>');
+      blank();
+      if (data.books.length === 0) {
+        line('<span class="t-faint">  Shelves empty. Check back later.</span>');
+      } else {
+        for (const b of data.books) {
+          const s = data.statusLabel[b.status] || b.status;
+          const color = b.status === 'writing' ? 't-accent' : b.status === 'planned' ? 't-warm' : 't-ok';
+          line(`  <span class="${color}">[${s.padEnd(8)}]</span> <span class="t-text">${b.title}</span> <span class="t-faint">\u00b7 ${b.genre}</span>`);
+        }
+      }
+      blank();
+    },
+
+    signal() {
+      blank();
+      line('<span class="t-accent">Signal frequencies:</span>');
+      blank();
+      line(`  <span class="t-faint">GitHub</span>     <span class="t-text">${data.navGithubUrl}</span>`);
+      line(`  <span class="t-faint">LinkedIn</span>   <span class="t-text">${data.navLinkedin}</span>`);
+      line(`  <span class="t-faint">dev.to</span>     <span class="t-text">${data.navDevto}</span>`);
+      line(`  <span class="t-faint">Coffee</span>     <span class="t-warm">${data.navCoffee}</span>`);
+      blank();
+      line('<span class="t-dim">Or send a signal at</span> <span class="t-accent">/#contact</span>');
+      blank();
+    },
+
+    terrain(gen: number) {
+      blank();
+      line('<span class="t-accent">Terrain map:</span>');
+      blank();
+      line('<span class="t-dim">  Loading terrain from GitHub...</span>');
+
+      const levels = ['\u2591', '\u2592', '\u2593', '\u2588', '<span class="t-warm">\u2588</span>'];
+
+      (async () => {
+        try {
+          const res = await fetch(data.navContribUrl);
+          const d = await res.json();
+          if (gen !== cmdGen) return;
+
+          const contribs = d.contributions as { level: number }[];
+          const weeks: number[] = [];
+          for (let i = 0; i < contribs.length; i += 7) {
+            const chunk = contribs.slice(i, i + 7);
+            weeks.push(Math.max(...chunk.map((c: { level: number }) => Math.min(c.level, 4))));
+          }
+
+          // Remove loading line
+          const last = output.querySelector('.term-line:last-child');
+          const prev = last?.previousElementSibling;
+          last?.remove();
+          prev?.remove();
+
+          const row = weeks.map((l: number) => levels[l]).join('');
+          line(`  <span class="t-faint">W01</span> ${row} <span class="t-faint">W${weeks.length}</span>`);
+          blank();
+          line('  <span class="t-faint">\u2591 Deep  \u2592 Shallow  \u2593 Land  \u2588 Peak  <span class="t-warm">\u2588</span> Summit</span>');
+          blank();
+          const total = d.total?.lastYear ?? 0;
+          line(`  <span class="t-dim">Total signals:</span> <span class="t-accent">${total}</span>`);
+          blank();
+          scrollBottom();
+        } catch {
+          if (gen !== cmdGen) return;
+          line('<span class="t-warm">  Signal lost \u2014 terrain unavailable</span>');
+          blank();
+          scrollBottom();
+        }
+      })();
+    },
+
+    uptime() {
+      blank();
+      line(`<span class="t-dim">Deployed:</span>  <span class="t-text">June 21, 2021</span>`);
+      line(`<span class="t-dim">Uptime:</span>   <span class="t-accent">${data.uptimeStr}</span>`);
+      line(`<span class="t-dim">YOE:</span>      <span class="t-warm">${data.yoe} years</span>`);
+      blank();
+    },
+
+    ping() {
+      blank();
+      const ms = Math.floor(Math.random() * 20) + 4;
+      line(`<span class="t-ok">PONG</span> <span class="t-faint">\u00b7</span> <span class="t-text">${ms}ms</span> <span class="t-faint">\u00b7</span> <span class="t-dim">Signal strong from 13\u00b0N</span>`);
+      blank();
+    },
+
+    coffee(gen: number) {
+      blank();
+      const count = Math.floor(Math.random() * 4000) + 2000;
+      line('<span class="t-warm">Brewing...</span>');
+      setTimeout(() => {
+        if (gen !== cmdGen) return;
+        line(`<span class="t-warm">\u2615</span> <span class="t-text">Filter coffee #${count.toLocaleString()} dispensed.</span>`);
+        line('<span class="t-faint">South Indian style. No sugar. No compromise.</span>');
+        blank();
+        scrollBottom();
+      }, 800);
+    },
+
+    history() {
+      blank();
+      line('<span class="t-accent">Voyage log:</span>');
+      blank();
+      const entries: [string, string][] = [
+        ['2021.06', 'Deployed to production \u2014 first real ship'],
+        ['2021',    'Backend systems, learning the ropes'],
+        ['2022',    'Distributed systems, first on-call scars'],
+        ['2023',    'Infrastructure & cloud migrations'],
+        ['2024',    'Leading technical decisions, mentoring crew'],
+        ['2025',    'Platform engineering, scaling systems'],
+        ['NOW',     'Charting new territory'],
+      ];
+      for (const [date, desc] of entries) {
+        const dateColor = date === 'NOW' ? 't-warm' : 't-faint';
+        line(`  <span class="${dateColor}">${date.padEnd(10)}</span> <span class="t-dim">\u2500\u2500</span> <span class="t-text">${desc}</span>`);
+      }
+      blank();
+    },
+
+    clear() {
+      output.innerHTML = '';
+    },
+
+    exit() {
+      blank();
+      line('<span class="t-faint">NavCom standby...</span>');
+      setTimeout(closeNavcom, 500);
+    },
+  };
+
+  // ── Easter eggs ──
+
+  const easter: Record<string, (gen: number) => void> = {
+    sudo() {
+      blank();
+      line('<span class="t-warm">Access denied.</span> <span class="t-dim">This vessel has one captain.</span>');
+      blank();
+    },
+
+    ssh() {
+      blank();
+      line('<span class="t-warm">Connection refused.</span> <span class="t-dim">This vessel operates on shortwave only.</span>');
+      blank();
+    },
+
+    rm() {
+      blank();
+      line('<span class="t-warm">Nice try.</span> <span class="t-dim">The ship stays intact.</span>');
+      blank();
+    },
+
+    ls() {
+      blank();
+      line('<span class="t-faint">drwxr-xr-x</span>  <span class="t-accent">about/</span>  <span class="t-accent">blog/</span>  <span class="t-accent">books/</span>  <span class="t-accent">contact/</span>  <span class="t-warm">coffee.log</span>  <span class="t-faint">resume.pdf</span>');
+      blank();
+    },
+
+    pwd() {
+      blank();
+      line(`<span class="t-text">/home/navigator/${data.navCoords.replace(/[°\s]/g, '')}</span>`);
+      blank();
+    },
+
+    date() {
+      const now = new Date();
+      const doy = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+      const stardate = `${now.getFullYear()}.${String(doy).padStart(3, '0')}`;
+      blank();
+      line(`<span class="t-dim">Stardate</span> <span class="t-accent">${stardate}</span> <span class="t-faint">\u00b7</span> <span class="t-text">${now.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span> <span class="t-faint">\u00b7</span> <span class="t-dim">${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>`);
+      blank();
+    },
+
+    neofetch() {
+      blank();
+      line('<span class="t-accent">        \u2584\u2584\u2584\u2584\u2584</span>      <span class="t-text font-bold">navigator@13N</span>');
+      line('<span class="t-accent">      \u2584\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2584</span>   <span class="t-faint">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</span>');
+      line(`<span class="t-accent">    \u2584\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2584</span> <span class="t-dim">OS:</span>     <span class="t-text">NavCom v2.1</span>`);
+      line(`<span class="t-accent">   \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588</span> <span class="t-dim">Host:</span>   <span class="t-text">${data.navCity}</span>`);
+      line('<span class="t-accent">  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588</span><span class="t-dim">Kernel:</span> <span class="t-text">Backend/Systems</span>');
+      line(`<span class="t-accent">  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588</span><span class="t-dim">Uptime:</span> <span class="t-text">${data.uptimeStr}</span>`);
+      line('<span class="t-accent">   \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588</span> <span class="t-dim">Shell:</span>  <span class="t-text">navcom-sh 1.0</span>');
+      line('<span class="t-accent">    \u2580\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2580</span> <span class="t-dim">Theme:</span>  <span class="t-text">Navigator Dark</span>');
+      line('<span class="t-accent">      \u2580\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2580</span>   <span class="t-dim">Coffee:</span> <span class="t-warm">Critical</span>');
+      line('<span class="t-accent">        \u2580\u2580\u2580\u2580\u2580</span>');
+      blank();
+    },
+
+    cat() {
+      blank();
+      line('<span class="t-dim">Usage: cat &lt;filename&gt;</span>');
+      line('<span class="t-faint">Try:</span> <span class="t-accent">cat resume.txt</span>');
+      blank();
+    },
+
+    'cat resume.txt'() {
+      blank();
+      line(`<span class="t-accent">${data.navName.toUpperCase()}</span>`);
+      line(`<span class="t-faint">${data.navRole} \u00b7 ${data.yoe} YOE \u00b7 ${data.navCity.split(',')[0]}</span>`);
+      line('<span class="t-faint">\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</span>');
+      blank();
+      line('<span class="t-warm">BEARING</span>');
+      line('<span class="t-dim">Backend systems, distributed architecture,</span>');
+      line('<span class="t-dim">cloud infrastructure, platform engineering</span>');
+      blank();
+      line('<span class="t-warm">COORDINATES</span>');
+      line(`<span class="t-dim">${data.navGithubUrl}</span>`);
+      line(`<span class="t-dim">${data.navLinkedin}</span>`);
+      blank();
+      line('<span class="t-faint">Full resume: /resume.pdf</span>');
+      blank();
+    },
+
+    man() {
+      blank();
+      const tag = data.navShort.toUpperCase();
+      line(`<span class="t-accent">${tag}(1)</span>             <span class="t-faint">Navigator Manual</span>             <span class="t-accent">${tag}(1)</span>`);
+      blank();
+      line('<span class="t-warm">NAME</span>');
+      line(`       ${data.navShort} \u2014 ${data.navManName}`);
+      blank();
+      line('<span class="t-warm">SYNOPSIS</span>');
+      line(`       <span class="t-text">${data.navShort}</span> ${data.navManFlags}`);
+      blank();
+      line('<span class="t-warm">DESCRIPTION</span>');
+      for (const l of data.navManDesc) line(`       ${l}`);
+      blank();
+      for (const l of data.navManOffDuty) line(`       ${l}`);
+      blank();
+      line('<span class="t-warm">SEE ALSO</span>');
+      line('       <span class="t-accent">whoami</span>(1), <span class="t-accent">signal</span>(1), <span class="t-accent">log</span>(1)');
+      blank();
+    },
+  };
+
+  // ── Execute command ──
+
+  function exec(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+
+    cmdGen++;
+    const gen = cmdGen;
+
+    // Clear previous output — only latest command visible
+    output.innerHTML = '';
+
+    const cmd = trimmed.toLowerCase();
+
+    // clear: leave screen empty
+    if (cmd === 'clear') return;
+
+    // Echo the command
+    line(`<span class="t-accent">navigator@13N ~ $</span> <span class="t-text">${trimmed}</span>`);
+
+    if (commands[cmd]) {
+      commands[cmd](gen);
+    } else if (easter[cmd]) {
+      easter[cmd](gen);
+    } else {
+      blank();
+      line(`<span class="t-warm">Command not found:</span> <span class="t-text">${trimmed}</span>`);
+      line('<span class="t-faint">Type</span> <span class="t-accent">help</span> <span class="t-faint">for available commands.</span>');
+      blank();
+    }
+
+    scrollBottom();
+  }
+
+  // ── Input handling ──
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const val = input.value;
+      if (val.trim()) { cmdHistory.unshift(val); histIdx = -1; }
+      exec(val);
+      input.value = '';
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (histIdx < cmdHistory.length - 1) { histIdx++; input.value = cmdHistory[histIdx]; }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (histIdx > 0) { histIdx--; input.value = cmdHistory[histIdx]; }
+      else { histIdx = -1; input.value = ''; }
+    }
+  });
+
+  terminal.addEventListener('click', () => {
+    if (inputRow.style.display !== 'none') input.focus();
+  });
+</script>
