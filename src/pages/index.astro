@@ -41,13 +41,13 @@ const c = siteConfig;
       <!-- Navigator portrait + Signal beacon -->
       <div class="hero-fade flex items-center gap-5 mb-12">
         <div class="navigator-portrait relative flex-shrink-0">
-          <div class="absolute -inset-1 rounded-full border border-dashed border-[var(--color-edge)] animate-[spin_30s_linear_infinite]"></div>
-          <div class="absolute -inset-2.5 rounded-full border border-dotted border-[var(--color-accent)]/20"></div>
+          <div class="absolute -inset-1 rounded-full border border-dashed border-[var(--color-accent)]/50 animate-[spin_30s_linear_infinite]"></div>
+          <div class="absolute -inset-2.5 rounded-full border border-dotted border-[var(--color-accent)]/30"></div>
           <!-- Cardinal ticks -->
-          <span class="absolute -top-3 left-1/2 -translate-x-1/2 w-px h-1.5 bg-[var(--color-accent)]/40"></span>
-          <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-px h-1.5 bg-[var(--color-accent)]/40"></span>
-          <span class="absolute top-1/2 -left-3 -translate-y-1/2 h-px w-1.5 bg-[var(--color-accent)]/40"></span>
-          <span class="absolute top-1/2 -right-3 -translate-y-1/2 h-px w-1.5 bg-[var(--color-accent)]/40"></span>
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 w-px h-2 bg-[var(--color-accent)]/60"></span>
+          <span class="absolute -bottom-3 left-1/2 -translate-x-1/2 w-px h-2 bg-[var(--color-accent)]/60"></span>
+          <span class="absolute top-1/2 -left-3 -translate-y-1/2 h-px w-2 bg-[var(--color-accent)]/60"></span>
+          <span class="absolute top-1/2 -right-3 -translate-y-1/2 h-px w-2 bg-[var(--color-accent)]/60"></span>
           <img
             src={avatarUrl}
             alt={c.name.full}
@@ -126,11 +126,6 @@ const c = siteConfig;
       </script>
     </div>
 
-    <!-- Scroll South -->
-    <div class="absolute bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 hero-fade flex flex-col items-center gap-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-[var(--color-tertiary)] animate-pulse"></span>
-      <div class="w-px h-6 border-l border-dashed border-[var(--color-tertiary)]/40 animate-bounce"></div>
-    </div>
 
     <!-- Canvas with constellation effect -->
     <script>
@@ -216,8 +211,19 @@ const c = siteConfig;
   </section>
 
 
-  <!-- Route connector -->
-  <div class="route-connector reveal"></div>
+  <!-- Route connector with beacon -->
+  <div class="reveal relative w-fit mx-auto flex flex-col items-center">
+    <span class="text-[8px] font-mono text-[var(--color-faint)] tracking-[0.2em] mb-1">S</span>
+    <div class="relative">
+      <div class="route-connector"></div>
+      <svg class="absolute inset-0 w-[20px] h-16" viewBox="0 0 20 64" fill="none">
+        <circle r="2" fill="var(--color-accent)">
+          <animateMotion dur="2.5s" repeatCount="indefinite" path="M10 0C10 8 4 12 4 20S16 28 16 36S4 44 4 52S10 60 10 64"/>
+          <animate attributeName="opacity" values="0;1;1;0" dur="2.5s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </div>
+  </div>
 
   <!-- ══════ ABOUT ══════ -->
   <section id="about" class="py-16 md:py-28 lg:py-36 px-6 md:px-12">

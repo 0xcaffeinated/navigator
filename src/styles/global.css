@@ -559,10 +559,9 @@ body {
   width: 20px;
   height: 64px;
   margin: 0 auto;
-  opacity: 0.25;
-  background: var(--color-faint);
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='64' fill='none'%3E%3Cpath d='M10 0C10 8 4 12 4 20S16 28 16 36S4 44 4 52S10 60 10 64' stroke='white' stroke-width='1' stroke-dasharray='4 4'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='64' fill='none'%3E%3Cpath d='M10 0C10 8 4 12 4 20S16 28 16 36S4 44 4 52S10 60 10 64' stroke='white' stroke-width='1' stroke-dasharray='4 4'/%3E%3C/svg%3E");
+  background: var(--color-edge);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='64' fill='none'%3E%3Cpath d='M10 0C10 8 4 12 4 20S16 28 16 36S4 44 4 52S10 60 10 64' stroke='white' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='64' fill='none'%3E%3Cpath d='M10 0C10 8 4 12 4 20S16 28 16 36S4 44 4 52S10 60 10 64' stroke='white' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
   mask-size: 100% 100%;
   -webkit-mask-size: 100% 100%;
   mask-repeat: no-repeat;
