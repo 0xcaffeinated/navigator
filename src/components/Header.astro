@@ -121,7 +121,7 @@ function isPageActive(href: string) {
 <!-- ═══ MOBILE BOTTOM BAR ═══ -->
 
 <!-- Control center popover (CMD + MAP) -->
-<div id="mobile-cc" class="md:hidden fixed bottom-[88px] left-1/2 -translate-x-1/2 z-[101] pointer-events-none opacity-0 translate-y-2 transition-all duration-200 ease-out">
+<div id="mobile-cc" class="md:hidden fixed bottom-[96px] left-1/2 -translate-x-1/2 z-[101] pointer-events-none opacity-0 translate-y-2 transition-all duration-200 ease-out">
   <div class="nav-glass rounded-2xl p-2 flex gap-2 pointer-events-auto">
     <button class="navcom-toggle flex flex-col items-center gap-1.5 px-5 py-3 rounded-xl hover:bg-white/[0.06] transition-colors cursor-pointer" aria-label="Open NavCom terminal">
       <svg class="w-5 h-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
@@ -252,15 +252,16 @@ function isPageActive(href: string) {
     ccIcon?.classList.remove('rotate-45');
   }
 
-  ccToggle?.addEventListener('click', () => {
-    ccOpen = !ccOpen;
-    if (ccOpen) {
-      ccPanel?.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
-      ccPanel?.classList.add('opacity-100', 'translate-y-0');
-      ccIcon?.classList.add('rotate-45');
-    } else {
-      closeCc();
-    }
+  function openCc() {
+    ccOpen = true;
+    ccPanel?.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+    ccPanel?.classList.add('opacity-100', 'translate-y-0');
+    ccIcon?.classList.add('rotate-45');
+  }
+
+  ccToggle?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (ccOpen) closeCc(); else openCc();
   });
 
   // Close CC when CMD or MAP is clicked
@@ -270,7 +271,7 @@ function isPageActive(href: string) {
 
   // Close CC on outside tap
   document.addEventListener('click', (e) => {
-    if (ccOpen && !ccPanel?.contains(e.target as Node) && !ccToggle?.contains(e.target as Node)) {
+    if (ccOpen && !ccPanel?.contains(e.target as Node)) {
       closeCc();
     }
   });
