@@ -134,4 +134,4 @@ export const avatarUrl = `https://github.com/${siteConfig.social.github.username
 export const contributionsUrl = `https://github-contributions-api.jogruber.de/v4/${siteConfig.social.github.username}?y=last`;
 
 /** Dev.to public articles API URL */
-export const devtoApiUrl = `https://dev.to/api/articles?username=${siteConfig.social.devto.username}&per_page=100`;
+export const devtoApiUrl = `https://dev.to/api/articles?username=${siteConfig.social.devto.username}`;

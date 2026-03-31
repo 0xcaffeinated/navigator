@@ -23,61 +23,36 @@ const localPosts = (await getCollection('blog'))
   }))
   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-// ── Dev.to view counts — fetched at build time with API key ──
-let viewsMap: Record<number, number> = {};
+// ── Dev.to stats — fetched at build time with authenticated API ──
+let devtoTotalPosts = 0;
+let devtoTotalViews = 0;
+let devtoTotalReactions = 0;
+let devtoTotalComments = 0;
+
 try {
   const apiKey = import.meta.env.DEVTO_API_KEY;
   if (apiKey) {
-    const pages = [];
+    const allArticles: any[] = [];
     for (let page = 1; page <= 10; page++) {
-      const res = await fetch(`https://dev.to/api/articles/me?per_page=100&page=${page}`, {
+      const res = await fetch(`https://dev.to/api/articles/me/published?per_page=100&page=${page}`, {
         headers: { 'api-key': apiKey },
       });
       if (!res.ok) break;
       const batch = await res.json();
       if (batch.length === 0) break;
-      pages.push(...batch);
+      allArticles.push(...batch);
+      if (batch.length < 100) break;
     }
-    for (const a of pages) {
-      viewsMap[a.id] = a.page_views_count || 0;
+    devtoTotalPosts = allArticles.length;
+    for (const a of allArticles) {
+      devtoTotalViews += a.page_views_count || 0;
+      devtoTotalReactions += a.public_reactions_count || 0;
+      devtoTotalComments += a.comments_count || 0;
     }
   }
 } catch {}
 
-// ── Dev.to articles — fetched at build time (public API) ──
-let devtoPosts: Array<{
-  title: string; description: string; date: string; tags: string[];
-  readTime: number; href: string; source: 'devto';
-  reactions: number; comments: number; views: number;
-}> = [];
-let totalReactions = 0;
-let totalComments = 0;
-let totalViews = 0;
-
-try {
-  const res = await fetch(devtoApiUrl);
-  if (res.ok) {
-    const articles: any[] = await res.json();
-    for (const a of articles) {
-      totalReactions += a.public_reactions_count || 0;
-      totalComments += a.comments_count || 0;
-      const views = viewsMap[a.id] || 0;
-      totalViews += views;
-      devtoPosts.push({
-        title: cleanTitle(a.title),
-        description: a.description,
-        date: new Date(a.published_at).toISOString(),
-        tags: a.tag_list || [],
-        readTime: a.reading_time_minutes,
-        href: `/blog/dev/${a.slug}`,
-        source: 'devto',
-        reactions: a.public_reactions_count || 0,
-        comments: a.comments_count || 0,
-        views,
-      });
-    }
-  }
-} catch {}
+const devtoApi = devtoApiUrl;
 ---
 
 <BaseLayout title={`Logbook — ${siteConfig.name.full}`}>
@@ -106,7 +81,7 @@ try {
       <div class="flex items-center gap-1.5 mb-8 reveal" id="log-filters">
         <button data-filter="devto" class="log-filter log-filter-active">
           <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.3zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg>
-          Tech <span class="hidden sm:inline">({devtoPosts.length})</span>
+          Tech <span class="hidden sm:inline">({devtoTotalPosts})</span>
         </button>
         <button data-filter="local" class="log-filter">
           <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
@@ -115,34 +90,32 @@ try {
       </div>
 
       <!-- Dev.to stats dashboard -->
-      {devtoPosts.length > 0 && (
-        <div id="devto-stats" class="card card-coord p-5 mb-8">
-          <div class="flex items-center gap-2.5 mb-4">
-            <span class="text-[9px] font-mono faint tracking-wider">SIGNAL.DASHBOARD</span>
-            <span class="w-3 border-t border-dashed border-[var(--color-faint)]/30"></span>
-            <svg class="w-3.5 h-3.5 faint" viewBox="0 0 24 24" fill="currentColor"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.3zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg>
-            <a href={siteConfig.social.devto.url} target="_blank" rel="noopener noreferrer" class="text-[9px] font-mono faint hover:text-[var(--color-accent)] transition-colors tracking-wider ml-auto">@{siteConfig.social.devto.username} ↗</a>
+      <div id="devto-stats" class="card card-coord p-5 mb-8">
+        <div class="flex items-center gap-2.5 mb-4">
+          <span class="text-[9px] font-mono faint tracking-wider">SIGNAL.DASHBOARD</span>
+          <span class="w-3 border-t border-dashed border-[var(--color-faint)]/30"></span>
+          <svg class="w-3.5 h-3.5 faint" viewBox="0 0 24 24" fill="currentColor"><path d="M7.42 10.05c-.18-.16-.46-.23-.84-.23H6l.02 2.44.04 2.45.56-.02c.41 0 .63-.07.83-.26.24-.24.26-.36.26-2.2 0-1.91-.02-1.96-.29-2.18zM0 4.94v14.12h24V4.94H0zM8.56 15.3c-.44.58-1.06.77-2.53.77H4.71V8.53h1.4c1.67 0 2.16.18 2.6.9.27.43.29.6.32 2.57.05 2.23-.02 2.73-.47 3.3zm5.09-5.47h-2.47v1.77h1.52v1.28l-.72.04-.75.03v1.77l1.22.03 1.2.04v1.28h-1.6c-1.53 0-1.6-.01-1.87-.3l-.3-.28v-3.16c0-3.02.01-3.18.25-3.48.23-.31.25-.31 1.88-.31h1.64v1.3zm4.68 5.45c-.17.43-.64.79-1 .79-.18 0-.45-.15-.67-.39-.32-.32-.45-.63-.82-2.08l-.9-3.39-.45-1.67h.76c.4 0 .75.02.75.05 0 .06 1.16 4.54 1.26 4.83.04.15.32-.7.73-2.3l.66-2.52.74-.04c.4-.02.73 0 .73.04 0 .14-1.67 6.38-1.8 6.68z"/></svg>
+          <a href={siteConfig.social.devto.url} target="_blank" rel="noopener noreferrer" class="text-[9px] font-mono faint hover:text-[var(--color-accent)] transition-colors tracking-wider ml-auto">@{siteConfig.social.devto.username} ↗</a>
+        </div>
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-3">
+          <div class="text-center">
+            <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{devtoTotalPosts}</div>
+            <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Transmissions</div>
           </div>
-          <div class="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-3">
-            <div class="text-center">
-              <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-text)]">{devtoPosts.length}</div>
-              <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Transmissions</div>
-            </div>
-            <div class="text-center">
-              <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-accent)]">{totalViews.toLocaleString()}</div>
-              <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Scans</div>
-            </div>
-            <div class="text-center">
-              <div class="font-[family-name:var(--font-display)] text-2xl font-bold accent-warm">{totalReactions}</div>
-              <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Reactions</div>
-            </div>
-            <div class="text-center">
-              <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-tertiary)]">{totalComments}</div>
-              <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Responses</div>
-            </div>
+          <div class="text-center">
+            <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-accent)]">{devtoTotalViews.toLocaleString()}</div>
+            <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Scans</div>
+          </div>
+          <div class="text-center">
+            <div class="font-[family-name:var(--font-display)] text-2xl font-bold accent-warm">{devtoTotalReactions}</div>
+            <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Reactions</div>
+          </div>
+          <div class="text-center">
+            <div class="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--color-tertiary)]">{devtoTotalComments}</div>
+            <div class="text-[8px] font-mono faint tracking-[0.15em] uppercase mt-0.5">Responses</div>
           </div>
         </div>
-      )}
+      </div>
 
       <!-- Entries container -->
       <div id="log-entries">
@@ -155,54 +128,27 @@ try {
           <p class="dim text-sm">No transmissions found on this frequency.</p>
         </div>
 
-        <!-- Dev.to posts (pre-rendered at build time, shown by default) -->
-        {devtoPosts.map((post) => (
-          <a
-            href={post.href}
-            data-source="devto"
-            class="log-entry group block py-7 pl-0 md:hover:pl-4 border-b border-[var(--color-edge)] hover:border-[var(--color-accent)]/40 transition-all duration-300"
-          >
-            <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
-              <span class="log-entry-num font-mono text-[9px] text-[var(--color-accent)]/50 tracking-wider"></span>
-              <span class="w-3 border-t border-dashed border-[var(--color-faint)]/30"></span>
-              <span class="font-mono text-[11px] faint tracking-wider">
-                {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-              </span>
-              <span class="faint">&middot;</span>
-              <span class="font-mono text-[11px] faint">{post.readTime} min</span>
-              <span class="faint">&middot;</span>
-              <span class="font-mono text-[9px] text-[var(--color-tertiary)] tracking-wider">EXT</span>
-            </div>
-            <div class="flex items-center justify-between gap-4">
-              <h2 class="font-[family-name:var(--font-display)] text-lg font-bold text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors mb-1.5">
-                {post.title}
-              </h2>
-              <svg class="w-4 h-4 faint opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </div>
-            <p class="dim text-sm leading-relaxed">{post.description}</p>
-            {post.tags.length > 0 && (
-              <div class="flex flex-wrap gap-1.5 mt-3">
-                {post.tags.map((tag: string, j: number) => <span class={j === 0 ? "tag-warm" : "tag"}>{tag}</span>)}
-              </div>
-            )}
-            <div class="flex items-center gap-3 mt-2.5">
-              {post.views > 0 && (
-                <span class="flex items-center gap-1 text-[10px] font-mono faint">
-                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                  {post.views.toLocaleString()}
-                </span>
-              )}
-              <span class="flex items-center gap-1 text-[10px] font-mono faint">
-                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                {post.reactions}
-              </span>
-              <span class="flex items-center gap-1 text-[10px] font-mono faint">
-                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                {post.comments}
-              </span>
-            </div>
-          </a>
-        ))}
+        <!-- Loading skeleton (shown while dev.to fetches) -->
+        <div id="devto-loading">
+          <div class="py-7 border-b border-[var(--color-edge)] animate-pulse">
+            <div class="h-3 w-48 bg-[var(--color-raised)] rounded mb-3"></div>
+            <div class="h-5 w-3/4 bg-[var(--color-raised)] rounded mb-2"></div>
+            <div class="h-3 w-full bg-[var(--color-raised)] rounded"></div>
+          </div>
+          <div class="py-7 border-b border-[var(--color-edge)] animate-pulse">
+            <div class="h-3 w-40 bg-[var(--color-raised)] rounded mb-3"></div>
+            <div class="h-5 w-2/3 bg-[var(--color-raised)] rounded mb-2"></div>
+            <div class="h-3 w-5/6 bg-[var(--color-raised)] rounded"></div>
+          </div>
+          <div class="py-7 border-b border-[var(--color-edge)] animate-pulse">
+            <div class="h-3 w-44 bg-[var(--color-raised)] rounded mb-3"></div>
+            <div class="h-5 w-1/2 bg-[var(--color-raised)] rounded mb-2"></div>
+            <div class="h-3 w-4/5 bg-[var(--color-raised)] rounded"></div>
+          </div>
+        </div>
+
+        <!-- Dev.to posts (populated by JS) -->
+        <div id="devto-entries"></div>
 
         <!-- Local posts (pre-rendered, hidden by default) -->
         {localPosts.map((post) => (
@@ -258,59 +204,168 @@ try {
     </div>
   </section>
 
+  <script is:inline define:vars={{ devtoApi, devtoTotalPosts }}>
+    window.__blogConfig = { devtoApi, devtoTotalPosts };
+  </script>
+
   <script>
     const PER_PAGE = 6;
-    const container = document.getElementById('log-entries')!;
+    const cfg = (window as any).__blogConfig;
+    const container = document.getElementById('devto-entries')!;
+    const loadingSkeleton = document.getElementById('devto-loading')!;
     const buttons = document.querySelectorAll<HTMLButtonElement>('#log-filters .log-filter');
     const prevBtn = document.getElementById('page-prev') as HTMLButtonElement;
     const nextBtn = document.getElementById('page-next') as HTMLButtonElement;
     const pageInfo = document.getElementById('page-info')!;
     const pagination = document.getElementById('log-pagination')!;
-    const statsCard = document.getElementById('devto-stats');
+    const statsCard = document.getElementById('devto-stats')!;
+    const emptyState = document.getElementById('log-empty')!;
+
+    const localEntries = Array.from(document.querySelectorAll<HTMLElement>('.log-entry[data-source="local"]'));
 
     let currentFilter = 'devto';
     let currentPage = 1;
 
-    const techEntries = Array.from(container.querySelectorAll<HTMLElement>('.log-entry[data-source="devto"]'));
-    const localEntries = Array.from(container.querySelectorAll<HTMLElement>('.log-entry[data-source="local"]'));
+    // ── Dev.to pagination state (total from build-time stats) ──
+    const devtoCache = new Map<number, any[]>();
+    const devtoTotal = cfg.devtoTotalPosts as number;
+    const devtoTotalPages = Math.max(1, Math.ceil(devtoTotal / PER_PAGE));
 
-    function getFiltered(): HTMLElement[] {
-      return currentFilter === 'devto' ? techEntries : localEntries;
+    // ── Emoji stripper ──
+    function cleanTitle(title: string) {
+      return title.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]+\s*/u, '');
     }
 
-    function render() {
-      const filtered = getFiltered();
-      const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-      currentPage = Math.min(currentPage, totalPages);
-      const start = (currentPage - 1) * PER_PAGE;
-      const end = start + PER_PAGE;
+    // ── Fetch one page of dev.to articles (per_page = site PER_PAGE) ──
+    async function fetchDevtoPage(page: number): Promise<any[]> {
+      if (devtoCache.has(page)) return devtoCache.get(page)!;
+      const res = await fetch(`${cfg.devtoApi}&per_page=${PER_PAGE}&page=${page}`);
+      if (!res.ok) throw new Error('Fetch failed');
+      const articles: any[] = await res.json();
+      devtoCache.set(page, articles);
+      return articles;
+    }
 
-      // Hide everything
-      techEntries.forEach(e => e.style.display = 'none');
-      localEntries.forEach(e => e.style.display = 'none');
+    // ── Render a single dev.to entry ──
+    function renderDevtoEntry(a: any, entryNum: number): string {
+      const date = new Date(a.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      const tags = (a.tag_list || []) as string[];
+      const tagsHtml = tags.length > 0
+        ? `<div class="flex flex-wrap gap-1.5 mt-3">${tags.map((t: string, j: number) => `<span class="${j === 0 ? 'tag-warm' : 'tag'}">${t}</span>`).join('')}</div>`
+        : '';
+      const reactions = a.public_reactions_count || 0;
+      const comments = a.comments_count || 0;
 
-      // Stats dashboard — only visible on tech tab
-      if (statsCard) statsCard.style.display = currentFilter === 'devto' ? '' : 'none';
+      return `<a href="/blog/dev/${a.slug}" data-source="devto" class="log-entry group block py-7 pl-0 md:hover:pl-4 border-b border-[var(--color-edge)] hover:border-[var(--color-accent)]/40 transition-all duration-300">
+        <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
+          <span class="font-mono text-[9px] text-[var(--color-accent)]/50 tracking-wider">ENT.${String(entryNum).padStart(3, '0')}</span>
+          <span class="w-3 border-t border-dashed border-[var(--color-faint)]/30"></span>
+          <span class="font-mono text-[11px] faint tracking-wider">${date}</span>
+          <span class="faint">&middot;</span>
+          <span class="font-mono text-[11px] faint">${a.reading_time_minutes} min</span>
+          <span class="faint">&middot;</span>
+          <span class="font-mono text-[9px] text-[var(--color-tertiary)] tracking-wider">EXT</span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="font-[family-name:var(--font-display)] text-lg font-bold text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors mb-1.5">${cleanTitle(a.title)}</h2>
+          <svg class="w-4 h-4 faint opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+        <p class="dim text-sm leading-relaxed">${a.description}</p>
+        ${tagsHtml}
+        <div class="flex items-center gap-3 mt-2.5">
+          <span class="flex items-center gap-1 text-[10px] font-mono faint">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            ${reactions}
+          </span>
+          <span class="flex items-center gap-1 text-[10px] font-mono faint">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            ${comments}
+          </span>
+        </div>
+      </a>`;
+    }
 
-      // Empty state
-      const emptyState = document.getElementById('log-empty');
-      if (emptyState) emptyState.style.display = filtered.length === 0 ? '' : 'none';
+    // ── Show articles for current page ──
+    function showDevtoPage(articles: any[]) {
+      if (articles.length === 0 && currentPage === 1) {
+        container.innerHTML = '';
+        emptyState.style.display = '';
+        pagination.style.display = 'none';
+        return;
+      }
 
-      // Show current page
-      filtered.forEach((e, i) => {
-        e.style.display = (i >= start && i < end) ? '' : 'none';
-        const numEl = e.querySelector('.log-entry-num');
-        if (numEl) numEl.textContent = `ENT.${String(filtered.length - i).padStart(3, '0')}`;
-      });
+      emptyState.style.display = 'none';
+      const offset = (currentPage - 1) * PER_PAGE;
 
-      // Pagination
-      pageInfo.textContent = `${String(currentPage).padStart(2, '0')} / ${String(totalPages).padStart(2, '0')}`;
+      container.innerHTML = articles.map((a, i) =>
+        renderDevtoEntry(a, devtoTotal - offset - i)
+      ).join('');
+
       prevBtn.disabled = currentPage <= 1;
-      nextBtn.disabled = currentPage >= totalPages;
-      pagination.style.display = totalPages <= 1 ? 'none' : '';
+      nextBtn.disabled = currentPage >= devtoTotalPages;
+
+      pageInfo.textContent = `${String(currentPage).padStart(2, '0')} / ${String(devtoTotalPages).padStart(2, '0')}`;
+      pagination.style.display = devtoTotalPages <= 1 ? 'none' : '';
     }
 
-    // Filter buttons
+    // ── Main render ──
+    async function render() {
+      if (currentFilter === 'devto') {
+        statsCard.style.display = '';
+        localEntries.forEach(e => e.style.display = 'none');
+        emptyState.style.display = 'none';
+
+        if (devtoCache.has(currentPage)) {
+          loadingSkeleton.style.display = 'none';
+          showDevtoPage(devtoCache.get(currentPage)!);
+          return;
+        }
+
+        loadingSkeleton.style.display = '';
+        container.innerHTML = '';
+        pagination.style.display = 'none';
+
+        try {
+          const articles = await fetchDevtoPage(currentPage);
+          loadingSkeleton.style.display = 'none';
+          showDevtoPage(articles);
+        } catch {
+          loadingSkeleton.style.display = 'none';
+          emptyState.style.display = '';
+          pagination.style.display = 'none';
+        }
+      } else {
+        // ── Local tab ──
+        statsCard.style.display = 'none';
+        loadingSkeleton.style.display = 'none';
+        container.innerHTML = '';
+
+        const total = localEntries.length;
+        const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+        currentPage = Math.min(currentPage, totalPages);
+        const start = (currentPage - 1) * PER_PAGE;
+
+        if (total === 0) {
+          emptyState.style.display = '';
+          pagination.style.display = 'none';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+        localEntries.forEach((e, i) => {
+          e.style.display = (i >= start && i < start + PER_PAGE) ? '' : 'none';
+          const numEl = e.querySelector('.log-entry-num');
+          if (numEl) numEl.textContent = `ENT.${String(total - i).padStart(3, '0')}`;
+        });
+
+        pageInfo.textContent = `${String(currentPage).padStart(2, '0')} / ${String(totalPages).padStart(2, '0')}`;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= totalPages;
+        pagination.style.display = totalPages <= 1 ? 'none' : '';
+      }
+    }
+
+    // ── Filter buttons ──
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('log-filter-active'));
@@ -321,7 +376,7 @@ try {
       });
     });
 
-    // Pagination
+    // ── Pagination ──
     function scrollToEntries() {
       const el = document.getElementById('log-filters');
       if (el) {
@@ -332,7 +387,7 @@ try {
     prevBtn.addEventListener('click', () => { currentPage--; render(); scrollToEntries(); });
     nextBtn.addEventListener('click', () => { currentPage++; render(); scrollToEntries(); });
 
-    // Init — render immediately, everything is already in the DOM
+    // ── Init ──
     render();
   </script>
 
