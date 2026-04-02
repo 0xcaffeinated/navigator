@@ -4,7 +4,14 @@ A developer portfolio with a navigator/cartographic theme. Compass roses, bearin
 
 **[Live Demo](https://adheeban.com)** | Built with Astro + Tailwind CSS + GSAP
 
-![Navigator Portfolio](public/og-image.png)
+### Screenshots
+
+| | |
+|:---:|:---:|
+| ![Hero](public/screenshots/screenshot-1.png) | ![About & GitHub Terrain](public/screenshots/screenshot-2.png) |
+| Hero | About & GitHub Terrain |
+| ![Contact & Footer](public/screenshots/screenshot-3.png) | ![Blog — Field Notes](public/screenshots/screenshot-4.png) |
+| Contact & Footer | Blog — Field Notes |
 
 ## Features
 
