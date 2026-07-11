@@ -4,10 +4,10 @@ import { siteConfig, coordsShort } from '../config';
 const currentPath = Astro.url.pathname;
 
 const links = [
-  { label: 'Origin', href: '/#about', section: 'about', coord: coordsShort.split(' ')[0] },
+  { label: 'Origin', href: '/navigator#about', section: 'about', coord: coordsShort.split(' ')[0] },
   { label: 'Logbook', href: '/blog', section: null, coord: 'LOG' },
   { label: 'Library', href: '/books', section: null, coord: 'LIB' },
-  { label: 'Signal', href: '/#contact', section: 'contact', coord: 'TX' },
+  { label: 'Signal', href: '/navigator#contact', section: 'contact', coord: 'TX' },
 ];
 
 function isPageActive(href: string) {
@@ -294,7 +294,7 @@ function isPageActive(href: string) {
   const mobileWps = document.querySelectorAll('#mobile-bar a.nav-link[data-section]') as NodeListOf<HTMLElement>;
   const sections = document.querySelectorAll('section[id]');
 
-  if (sections.length && window.location.pathname === '/') {
+  if (sections.length && window.location.pathname === '/navigator') {
     const activate = (id: string) => {
       [sideLinks, mobileWps].forEach(linkSet => {
         linkSet.forEach((link) => {
