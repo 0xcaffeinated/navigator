@@ -110,6 +110,41 @@ export const siteConfig = {
       "pronounce.",
     ],
   },
+
+  // ── Launchpad / Fleet — the landing page at adheeban.com ──
+  /** Copy for the launchpad hero. */
+  launch: {
+    eyebrow: 'Fleet Command',
+    title: 'The Fleet',
+    tagline: "Everything I've launched, charted in one harbour. Pick a vessel.",
+  },
+  /**
+   * Your other sites. Add a new one by appending a single object here —
+   * no component edits needed.
+   *   status: 'live' | 'beta' | 'building' | 'docked'
+   *   icon:   'prompt' | 'bolt' | 'compass' | 'book' | 'globe'  (see index.astro icon map)
+   *   accent: 'accent' | 'warm' | 'tertiary'
+   */
+  sites: [
+    {
+      name: 'Promptster',
+      url: 'https://promptster.adheeban.com',
+      host: 'promptster.adheeban.com',
+      tagline: 'Level up your prompting — 3 paths, 31 challenges, instant feedback, zero setup.',
+      status: 'live',
+      icon: 'prompt',
+      accent: 'accent',
+    },
+    {
+      name: 'tldr',
+      url: 'https://tldr.adheeban.com',
+      host: 'tldr.adheeban.com',
+      tagline: 'The hard parts of tech, five minutes at a time.',
+      status: 'live',
+      icon: 'bolt',
+      accent: 'warm',
+    },
+  ],
 } as const;
 
 // ── Derived helpers (don't edit) ──

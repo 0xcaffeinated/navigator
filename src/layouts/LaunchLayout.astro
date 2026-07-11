@@ -1,0 +1,253 @@
+---
+import '../styles/global.css';
+import { siteConfig } from '../config';
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+}
+
+const { title, description = siteConfig.description, image = '/og-image.png' } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || siteConfig.siteUrl);
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href={canonicalURL.href} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:image" content={new URL(image, Astro.site || siteConfig.siteUrl).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content={siteConfig.name.full} />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(image, Astro.site || siteConfig.siteUrl).href} />
+
+    <meta name="theme-color" content="#8b5cf6" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <style is:global>
+      #fleet-canvas { opacity: 0.45; }
+      [data-theme="light"] #fleet-canvas { opacity: 0.16; }
+    </style>
+  </head>
+  <body>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--color-accent)] focus:text-white focus:text-sm focus:font-mono">Skip to content</a>
+
+    <!-- Ambient constellation background -->
+    <canvas id="fleet-canvas" class="fixed inset-0 w-full h-full -z-10 pointer-events-none"></canvas>
+    <div class="hero-glow fixed inset-0 -z-10 pointer-events-none"></div>
+
+    <!-- Theme toggle -->
+    <button class="theme-toggle-btn fixed top-5 right-5 z-50 w-9 h-9 rounded-lg flex items-center justify-center dim hover:text-[var(--color-accent)] hover:bg-white/[0.04] transition-all duration-200 cursor-pointer" aria-label="Toggle theme">
+      <div class="relative w-4 h-4">
+        <svg class="icon-sun theme-icon theme-icon-hidden w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg class="icon-moon theme-icon w-4 h-4 absolute inset-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </div>
+    </button>
+
+    <main id="main-content">
+      <slot />
+    </main>
+
+    <!-- No-flash theme init -->
+    <script is:inline>
+      (function(){
+        var t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+
+    <!-- Theme toggle -->
+    <script>
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle-btn');
+      const suns = document.querySelectorAll('.icon-sun');
+      const moons = document.querySelectorAll('.icon-moon');
+
+      function setIcons(t: string) {
+        suns.forEach(s => s.classList.toggle('theme-icon-hidden', t !== 'light'));
+        moons.forEach(m => m.classList.toggle('theme-icon-hidden', t === 'light'));
+      }
+      setIcons(html.dataset.theme || 'dark');
+
+      btn?.addEventListener('click', () => {
+        const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+        html.dataset.theme = next;
+        localStorage.setItem('theme', next);
+        setIcons(next);
+      });
+    </script>
+
+    <!-- Entrance + interaction (GSAP) -->
+    <script>
+      import { gsap } from 'gsap';
+      import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+      gsap.registerPlugin(ScrollTrigger);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Hero entrance
+      const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+      tl.from('.line-reveal', { y: '120%', opacity: 0, rotateX: -10, duration: 1.4, stagger: 0.12 }, 0.15);
+      tl.from('.hero-fade', { y: 28, opacity: 0, duration: 1.1, stagger: 0.1 }, 0.6);
+
+      // Staggered children (site grid)
+      document.querySelectorAll('.stagger').forEach((container) => {
+        gsap.fromTo(container.children,
+          { y: 50, opacity: 0 },
+          { y: 0, opacity: 1, duration: 1, stagger: 0.12, ease: 'power4.out',
+            scrollTrigger: { trigger: container, start: 'top 88%', once: true } });
+      });
+
+      // Scroll reveals
+      document.querySelectorAll('.reveal').forEach((el) => {
+        gsap.fromTo(el,
+          { y: 40, opacity: 0 },
+          { y: 0, opacity: 1, duration: 1.1, ease: 'power4.out',
+            scrollTrigger: { trigger: el, start: 'top 92%', once: true } });
+      });
+
+      // Magnetic buttons
+      document.querySelectorAll('.magnetic').forEach((b) => {
+        const el = b as HTMLElement;
+        el.addEventListener('mousemove', (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          gsap.to(el, { x: (e.clientX - r.left - r.width / 2) * 0.25, y: (e.clientY - r.top - r.height / 2) * 0.25, duration: 0.4, ease: 'power3.out' });
+        });
+        el.addEventListener('mouseleave', () => gsap.to(el, { x: 0, y: 0, duration: 0.8, ease: 'elastic.out(1, 0.4)' }));
+      });
+
+      // 3D tilt on cards
+      document.querySelectorAll('.tilt').forEach((card) => {
+        const el = card as HTMLElement;
+        el.addEventListener('mousemove', (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5;
+          const y = (e.clientY - r.top) / r.height - 0.5;
+          gsap.to(el, { rotateY: x * 6, rotateX: -y * 6, y: -4, duration: 0.4, ease: 'power2.out', transformPerspective: 900 });
+        });
+        el.addEventListener('mouseleave', () => gsap.to(el, { rotateY: 0, rotateX: 0, y: 0, duration: 0.7, ease: 'power3.out' }));
+      });
+
+      if (reduce) {
+        gsap.set('.line-reveal, .hero-fade, .reveal, .stagger > *', { clearProps: 'all', opacity: 1, y: 0 });
+      }
+    </script>
+
+    <!-- Ambient constellation canvas -->
+    <script>
+      const c = document.getElementById('fleet-canvas') as HTMLCanvasElement;
+      if (c) {
+        const ctx = c.getContext('2d')!;
+        let w = 0, h = 0, mx = -9999, my = -9999;
+        const isMobile = window.matchMedia('(pointer: coarse)').matches;
+        interface Dot { x: number; y: number; ox: number; oy: number; }
+        const dots: Dot[] = [];
+        const sp = isMobile ? 40 : 48;
+        const radius = 180;
+
+        let pulsePhase = 0, pulseCx = 0, pulseCy = 0;
+        const pulseRadius = isMobile ? 140 : 0;
+
+        function resize() {
+          w = c.width = c.offsetWidth;
+          h = c.height = c.offsetHeight;
+          dots.length = 0;
+          for (let x = sp; x < w; x += sp)
+            for (let y = sp; y < h; y += sp)
+              dots.push({ x, y, ox: x, oy: y });
+          pulseCx = w * 0.5; pulseCy = h * 0.4;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        if (!isMobile) {
+          document.addEventListener('mousemove', (e) => {
+            const r = c.getBoundingClientRect();
+            mx = e.clientX - r.left; my = e.clientY - r.top;
+          });
+        }
+
+        const light = () => document.documentElement.dataset.theme === 'light';
+
+        (function loop() {
+          ctx.clearRect(0, 0, w, h);
+          pulsePhase += 0.008;
+
+          let fx = mx, fy = my, fr = radius;
+          if (isMobile) {
+            fx = pulseCx + Math.sin(pulsePhase * 0.7) * w * 0.3;
+            fy = pulseCy + Math.cos(pulsePhase * 0.5) * h * 0.15;
+            fr = pulseRadius + Math.sin(pulsePhase * 1.2) * 30;
+          }
+
+          const nearDots: Dot[] = [];
+          for (const d of dots) {
+            const dx = fx - d.ox, dy = fy - d.oy;
+            const dist = Math.hypot(dx, dy);
+            if (dist < fr) {
+              const f = (1 - dist / fr) * (isMobile ? 10 : 20);
+              d.x = d.ox + (dx / dist) * f;
+              d.y = d.oy + (dy / dist) * f;
+              nearDots.push(d);
+            } else {
+              d.x += (d.ox - d.x) * 0.08;
+              d.y += (d.oy - d.y) * 0.08;
+            }
+            const prox = Math.max(0, 1 - dist / fr);
+            const baseAlpha = isMobile ? 0.08 : (light() ? 0.05 : 0.1);
+            const a = baseAlpha + prox * (isMobile ? 0.35 : 0.55);
+            const s = 1 + prox * (isMobile ? 1.8 : 2.5);
+            const warmth = Math.max(0, 1 - dist / (fr * 0.35));
+            const cr = Math.round(139 + warmth * 110);
+            const cg = Math.round(92 + warmth * 23);
+            const cb = Math.round(246 - warmth * 224);
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, s, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, ${a})`;
+            ctx.fill();
+          }
+
+          for (let i = 0; i < nearDots.length; i++) {
+            for (let j = i + 1; j < nearDots.length; j++) {
+              const ddx = nearDots[i].x - nearDots[j].x;
+              const ddy = nearDots[i].y - nearDots[j].y;
+              const dd = Math.hypot(ddx, ddy);
+              if (dd < 80) {
+                const alpha = (1 - dd / 80) * (light() ? 0.06 : 0.12);
+                ctx.beginPath();
+                ctx.moveTo(nearDots[i].x, nearDots[i].y);
+                ctx.lineTo(nearDots[j].x, nearDots[j].y);
+                ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+              }
+            }
+          }
+          requestAnimationFrame(loop);
+        })();
+      }
+    </script>
+  </body>
+</html>
